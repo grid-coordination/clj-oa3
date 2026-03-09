@@ -293,7 +293,7 @@ clojure -M:nrepl
 | Repo | Description |
 |------|-------------|
 | [clj-oa3-client](https://github.com/grid-coordination/clj-oa3-client) | Component lifecycle wrapper for constructing and managing OA3 clients |
-| [clj-oa3-test](https://github.com/grid-coordination/clj-oa3-test) | Integration tests against VTN-RI |
+| [clj-oa3-test](https://github.com/grid-coordination/clj-oa3-test) | OpenADR 3 integration tests |
 
 ## License
 
