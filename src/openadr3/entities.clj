@@ -597,10 +597,30 @@
 ;; MQTT Notification coercion
 ;; ---------------------------------------------------------------------------
 
-(defn- snake->camel-keys
-  "Recursively transform all keys from snake_case to camelCase keywords."
+(def ^:private id-suffix-fixups
+  "OpenADR uses uppercase ID in camelCase keys (programID, eventID, etc.)
+  but camel-snake-kebab produces programId. Fix the known suffixes."
+  {:programId  :programID
+   :eventId    :eventID
+   :venId      :venID
+   :resourceId :resourceID
+   :reportId   :reportID
+   :clientId   :clientID
+   :subscriptionId :subscriptionID})
+
+(defn- fix-id-keys
+  "Replace *Id keys with *ID keys to match the OpenADR API convention."
   [m]
-  (cske/transform-keys csk/->camelCaseKeyword m))
+  (reduce-kv (fn [acc k v]
+               (let [new-k (get id-suffix-fixups k k)]
+                 (assoc acc new-k v)))
+             {} m))
+
+(defn- snake->camel-keys
+  "Recursively transform all keys from snake_case to camelCase keywords,
+  then fix ID suffix convention (programId -> programID)."
+  [m]
+  (cske/transform-keys (comp #(get id-suffix-fixups % %) csk/->camelCaseKeyword) m))
 
 (def RawNotification
   "Malli schema for a raw MQTT notification (snake_case keys from JSON)."
