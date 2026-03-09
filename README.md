@@ -16,29 +16,29 @@ A Clojure client library for the [OpenADR 3](https://www.openadr.org/) API, prov
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    openadr3.api                          │
-│                                                         │
-│  Raw functions: get-programs, create-event, ...         │
-│  → return {:status 200 :body {...camelCase...}}         │
-│                                                         │
-│  Coerced functions: programs, events, vens, ...         │
-│  → return [#:openadr{:id "..." :created #inst ...}]    │
-│       └── each entity carries :openadr/raw metadata     │
-├─────────────────────────────────────────────────────────┤
-│                  openadr3.entities                       │
-│                                                         │
-│  ->program, ->event, ->ven, ->resource, ->report,       │
-│  ->subscription, ->interval, ->interval-period          │
-│                                                         │
-│  Multimethods: coerce (by objectType),                  │
-│                coerce-payload (by payload type)          │
-│                                                         │
-│  Malli schemas: RawProgram, Program, RawEvent, Event... │
-├─────────────────────────────────────────────────────────┤
-│              Martian + Hato (HTTP)                       │
-│              OpenADR 3 OpenAPI spec (YAML)               │
-└─────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│                  openadr3.api                         │
+│                                                       │
+│  Raw functions: get-programs, create-event, ...       │
+│  → return {:status 200 :body {...camelCase...}}       │
+│                                                       │
+│  Coerced functions: programs, events, vens, ...       │
+│  → return [#:openadr{:id "..." :created #inst ...}]   │
+│       └── each entity carries :openadr/raw metadata   │
+├───────────────────────────────────────────────────────┤
+│                openadr3.entities                      │
+│                                                       │
+│  ->program, ->event, ->ven, ->resource, ->report,     │
+│  ->subscription, ->interval, ->interval-period        │
+│                                                       │
+│  Multimethods: coerce (by objectType),                │
+│               coerce-payload (by payload type)        │
+│                                                       │
+│  Malli schemas: RawProgram, Program, RawEvent, Event  │
+├───────────────────────────────────────────────────────┤
+│            Martian + Hato (HTTP)                      │
+│            OpenADR 3 OpenAPI spec (YAML)              │
+└───────────────────────────────────────────────────────┘
 ```
 
 ## Prerequisites
