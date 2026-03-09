@@ -319,6 +319,11 @@
   [openapi-client]
   (martian/response-for openapi-client :search-vens))
 
+(defn search-vens
+  "Search VENs with query parameters (targetType, targetValues, skip, limit, venName)."
+  [openapi-client query-params]
+  (martian/response-for openapi-client :search-vens query-params))
+
 (defn get-ven-by-id
   "Get a VEN by its ID."
   [openapi-client ven-id]
