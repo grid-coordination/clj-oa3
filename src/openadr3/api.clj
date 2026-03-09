@@ -367,13 +367,11 @@
   (martian/response-for openapi-client :search-ven-resource-by-id {:resourceID resource-id}))
 
 (defn create-resource
-  "Create a resource for a VEN."
-  [openapi-client ven-id resource-name]
-  (martian/response-for openapi-client
-                        :create-resource
-                        {:venID ven-id
-                         :objectType "VEN_RESOURCE_REQUEST"
-                         :resourceName resource-name}))
+  "Create a resource for a VEN. Body should include :venID, :resourceName,
+  and :objectType (VEN_RESOURCE_REQUEST or BL_RESOURCE_REQUEST).
+  For BL requests, also include :clientID."
+  [openapi-client resource-body]
+  (martian/response-for openapi-client :create-resource resource-body))
 
 (defn update-resource
   "Update an existing resource."
