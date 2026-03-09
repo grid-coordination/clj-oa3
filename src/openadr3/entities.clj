@@ -10,7 +10,9 @@
   dispatching on the payload :type string."
   (:require [tick.core :as t]
             [tick.alpha.interval :as t.i]
-            [malli.core :as m])
+            [malli.core :as m]
+            [camel-snake-kebab.core :as csk]
+            [camel-snake-kebab.extras :as cske])
   (:import [java.time Duration Instant]))
 
 ;; ---------------------------------------------------------------------------
@@ -145,9 +147,14 @@
 ;; ---------------------------------------------------------------------------
 
 (defn- parse-instant
-  "Parse an RFC 3339 datetime string to a UTC Instant."
+  "Parse a datetime string to a UTC Instant.
+  Handles RFC 3339 (2026-03-08T19:22:06Z) and the VTN-RI's non-standard
+  format (2026-03-08 19:22:06) by normalizing to RFC 3339."
   ^Instant [^String s]
-  (Instant/parse s))
+  (let [normalized (if (.contains s "T")
+                     s
+                     (str (.replace s " " "T") "Z"))]
+    (Instant/parse normalized)))
 
 (defn- parse-duration
   "Parse an ISO 8601 duration string to a java.time.Duration."
@@ -257,8 +264,8 @@
   "Extract and coerce the common object metadata fields."
   [raw]
   {:openadr/id                    (:id raw)
-   :openadr/created               (parse-instant (:createdDateTime raw))
-   :openadr/modified              (parse-instant (:modificationDateTime raw))
+   :openadr/created               (parse-instant-maybe (:createdDateTime raw))
+   :openadr/modified              (parse-instant-maybe (:modificationDateTime raw))
    :openadr/object-type           (keyword "openadr.object-type"
                                            (.toLowerCase ^String (:objectType raw)))})
 
@@ -572,8 +579,10 @@
 
 (defmethod coerce "PROGRAM" [raw] (->program raw))
 (defmethod coerce "EVENT" [raw] (->event raw))
+(defmethod coerce "VEN" [raw] (->ven raw))
 (defmethod coerce "BL_VEN_REQUEST" [raw] (->ven raw))
 (defmethod coerce "VEN_VEN_REQUEST" [raw] (->ven raw))
+(defmethod coerce "RESOURCE" [raw] (->resource raw))
 (defmethod coerce "BL_RESOURCE_REQUEST" [raw] (->resource raw))
 (defmethod coerce "VEN_RESOURCE_REQUEST" [raw] (->resource raw))
 (defmethod coerce "REPORT" [raw] (->report raw))
@@ -583,6 +592,69 @@
   [raw]
   (throw (ex-info (str "Unknown objectType: " (:objectType raw))
                   {:object-type (:objectType raw) :raw raw})))
+
+;; ---------------------------------------------------------------------------
+;; MQTT Notification coercion
+;; ---------------------------------------------------------------------------
+
+(defn- snake->camel-keys
+  "Recursively transform all keys from snake_case to camelCase keywords."
+  [m]
+  (cske/transform-keys csk/->camelCaseKeyword m))
+
+(def RawNotification
+  "Malli schema for a raw MQTT notification (snake_case keys from JSON)."
+  [:map
+   [:object_type :string]
+   [:operation :string]
+   [:object :map]
+   [:targets {:optional true} [:maybe [:vector :any]]]])
+
+(def Notification
+  "Malli schema for a coerced MQTT notification."
+  [:map
+   [:openadr.notification/object-type :keyword]
+   [:openadr.notification/operation :keyword]
+   [:openadr.notification/object :map]
+   [:openadr.notification/targets {:optional true} [:maybe [:vector :any]]]])
+
+(defn ->notification
+  "Coerce a raw notification into a namespaced entity.
+
+  The inner :object is transformed from snake_case to camelCase and then
+  coerced via the `coerce` multimethod to produce a full entity.
+
+  Optional extra-meta map is merged into the metadata. Use this to record
+  the delivery channel, e.g. {:openadr/channel :mqtt :openadr/topic \"programs/create\"}.
+  A future webhook handler would pass {:openadr/channel :webhook} instead.
+
+  Attaches :openadr/raw metadata (plus any extra-meta)."
+  ([raw]
+   (->notification raw nil))
+  ([raw extra-meta]
+   (let [obj-type   (:object_type raw)
+         operation  (:operation raw)
+         camel-obj  (snake->camel-keys (:object raw))
+         entity     (coerce camel-obj)]
+     (-> {:openadr.notification/object-type
+          (keyword "openadr.object-type" (.toLowerCase ^String obj-type))
+
+          :openadr.notification/operation
+          (keyword "openadr.operation" (.toLowerCase ^String operation))
+
+          :openadr.notification/object entity}
+         (cond->
+          (:targets raw)
+           (assoc :openadr.notification/targets (:targets raw)))
+         (with-meta (merge {:openadr/raw raw} extra-meta))))))
+
+(defn notification?
+  "Returns true if the map looks like an MQTT notification payload."
+  [m]
+  (and (map? m)
+       (contains? m :object_type)
+       (contains? m :operation)
+       (contains? m :object)))
 
 ;; ---------------------------------------------------------------------------
 ;; Time helpers
