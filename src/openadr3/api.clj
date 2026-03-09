@@ -1,9 +1,13 @@
 (ns openadr3.api
   "OpenADR 3 API client library.
-  Spec-driven HTTP client built on Martian with the OpenAPI spec as the single source of truth."
+  Spec-driven HTTP client built on Martian with the OpenAPI spec as the single source of truth.
+
+  Functions return raw HTTP responses by default. Use the coerced helpers
+  (programs, events, vens, etc.) to get namespaced Clojure entities."
   (:require [martian.core :as martian]
             [martian.hato :as mhhttp]
-            [clojure.set :as set]))
+            [clojure.set :as set]
+            [openadr3.entities :as entities]))
 
 ;; -----------------------------------------------------------------------------
 ;; Interceptors
@@ -449,3 +453,75 @@
   "Delete a subscription by ID."
   [openapi-client subscription-id]
   (martian/response-for openapi-client :delete-subscription {:subscriptionID subscription-id}))
+
+;; -----------------------------------------------------------------------------
+;; Response helpers
+;; -----------------------------------------------------------------------------
+
+(defn success?
+  "True if the HTTP response has a 2xx status code."
+  [response]
+  (<= 200 (:status response) 299))
+
+(defn body
+  "Extract the :body from an HTTP response."
+  [response]
+  (:body response))
+
+;; -----------------------------------------------------------------------------
+;; Coerced entity helpers
+;;
+;; These return coerced namespaced entities (via openadr3.entities).
+;; List endpoints return vectors; by-id endpoints return single entities.
+;; All coerced entities carry :openadr/raw metadata with the original data.
+;; -----------------------------------------------------------------------------
+
+(defn programs
+  "Fetch and coerce all programs. Returns a vector of Program entities."
+  [client]
+  (mapv entities/->program (body (get-programs client))))
+
+(defn program
+  "Fetch and coerce a program by ID. Returns a Program entity."
+  [client program-id]
+  (entities/->program (body (get-program-by-id client program-id))))
+
+(defn events
+  "Fetch and coerce all events. Returns a vector of Event entities."
+  [client]
+  (mapv entities/->event (body (get-events client))))
+
+(defn event
+  "Fetch and coerce an event by ID. Returns an Event entity."
+  [client event-id]
+  (entities/->event (body (get-event-by-id client event-id))))
+
+(defn vens
+  "Fetch and coerce all VENs. Returns a vector of Ven entities."
+  [client]
+  (mapv entities/->ven (body (get-vens client))))
+
+(defn ven
+  "Fetch and coerce a VEN by ID. Returns a Ven entity."
+  [client ven-id]
+  (entities/->ven (body (get-ven-by-id client ven-id))))
+
+(defn reports
+  "Fetch and coerce all reports. Returns a vector of Report entities."
+  [client]
+  (mapv entities/->report (body (get-reports client))))
+
+(defn report
+  "Fetch and coerce a report by ID. Returns a Report entity."
+  [client report-id]
+  (entities/->report (body (get-report-by-id client report-id))))
+
+(defn subscriptions
+  "Fetch and coerce all subscriptions. Returns a vector of Subscription entities."
+  [client]
+  (mapv entities/->subscription (body (get-subscriptions client))))
+
+(defn subscription
+  "Fetch and coerce a subscription by ID. Returns a Subscription entity."
+  [client subscription-id]
+  (entities/->subscription (body (get-subscription-by-id client subscription-id))))
