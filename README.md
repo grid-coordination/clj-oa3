@@ -33,8 +33,12 @@ A Clojure client library for the [OpenADR 3](https://www.openadr.org/) API, prov
 │                                                       │
 │  Multimethods: coerce (by objectType),                │
 │               coerce-payload (by payload type)        │
-│                                                       │
-│  Malli schemas: RawProgram, Program, RawEvent, Event  │
+├───────────────────────────────────────────────────────┤
+│          openadr3.entities.schema                     │
+│  Coerced Malli schemas: Program, Event, Ven, ...     │
+├───────────────────────────────────────────────────────┤
+│          openadr3.entities.schema.raw                 │
+│  Raw Malli schemas: Program, Event, Ven, ...         │
 ├───────────────────────────────────────────────────────┤
 │            Martian + Hato (HTTP)                      │
 │            OpenADR 3 OpenAPI spec (YAML)              │
@@ -254,7 +258,52 @@ Topic discovery for all notifier endpoints. Functions follow the pattern `get-mq
 
 ### Malli Schemas
 
-Both raw (`RawProgram`, `RawEvent`, ...) and coerced (`Program`, `Event`, ...) schemas are available in `openadr3.entities` for boundary validation and testing.
+Schemas live in dedicated namespaces, separate from the coercion machinery. Consumers can depend on schemas for validation, generative testing, or documentation without pulling in the transformation code.
+
+```
+openadr3.entities.schema       ;; coerced entity schemas (the public contract)
+openadr3.entities.schema.raw   ;; raw API schemas (boundary validation)
+```
+
+**`openadr3.entities.schema`** — Coerced schemas describing the Clojure-native shape: namespaced keywords, Instants, Durations, tick intervals.
+
+```clojure
+(require '[openadr3.entities.schema :as schema])
+
+schema/Program       ;; [:map [:openadr/id :string] [:openadr/created inst?] ...]
+schema/Event         ;; [:map [:openadr.event/program-id :string] ...]
+schema/Ven
+schema/Resource
+schema/Report
+schema/Subscription
+schema/Notification
+schema/IntervalPeriod
+schema/Interval
+schema/Payload
+```
+
+**`openadr3.entities.schema.raw`** — Raw schemas mirroring the JSON shape exactly (camelCase keys, string values). Useful at the API boundary but rarely needed by downstream code.
+
+```clojure
+(require '[openadr3.entities.schema.raw :as raw])
+
+raw/Program          ;; [:map [:id :string] [:programName :string] ...]
+raw/Event
+raw/Ven
+raw/Resource
+raw/Report
+raw/Subscription
+raw/Notification
+raw/IntervalPeriod
+raw/Interval
+raw/ValuesMap
+```
+
+The `validate-raw-*` functions in `openadr3.entities` use the raw schemas for boundary validation:
+
+```clojure
+(entities/validate-raw-program raw-map)  ;; nil on success, Malli explanation on failure
+```
 
 ## Development
 
