@@ -392,8 +392,12 @@
 (defn ->notification
   "Coerce a raw notification into a namespaced entity.
 
-  The inner :object is transformed from snake_case to camelCase and then
-  coerced via the `coerce` multimethod to produce a full entity.
+  Handles both formats:
+    - Spec-compliant (camelCase): :objectType, :operation, :object with camelCase keys
+    - VTN-RI (snake_case): :object_type, :operation, :object with snake_case keys
+
+  The VTN-RI snake_case format is a known bug where MQTT notifications use
+  snake_case instead of the camelCase defined in the OpenADR 3 specification.
 
   Optional extra-meta map is merged into the metadata. Use this to record
   the delivery channel, e.g. {:openadr/channel :mqtt :openadr/topic \"programs/create\"}.
@@ -403,10 +407,13 @@
   ([raw]
    (->notification raw nil))
   ([raw extra-meta]
-   (let [obj-type   (:object_type raw)
-         operation  (:operation raw)
-         camel-obj  (snake->camel-keys (:object raw))
-         entity     (coerce camel-obj)]
+   (let [snake?    (and (contains? raw :object_type)
+                        (not (contains? raw :objectType)))
+         obj-type  (if snake? (:object_type raw) (:objectType raw))
+         operation (:operation raw)
+         obj       (:object raw)
+         camel-obj (if snake? (snake->camel-keys obj) obj)
+         entity    (coerce camel-obj)]
      (-> {:openadr.notification/object-type
           (keyword "openadr.object-type" (.toLowerCase ^String obj-type))
 
@@ -420,10 +427,11 @@
          (with-meta (merge {:openadr/raw raw} extra-meta))))))
 
 (defn notification?
-  "Returns true if the map looks like an MQTT notification payload."
+  "Returns true if the map looks like a notification payload.
+  Detects both spec-compliant camelCase and VTN-RI snake_case formats."
   [m]
   (and (map? m)
-       (contains? m :object_type)
+       (or (contains? m :object_type) (contains? m :objectType))
        (contains? m :operation)
        (contains? m :object)))
 
