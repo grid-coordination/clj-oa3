@@ -6,6 +6,7 @@
   (programs, events, vens, etc.) to get namespaced Clojure entities."
   (:require [martian.core :as martian]
             [martian.hato :as mhhttp]
+            [hato.client :as hc]
             [clojure.set :as set]
             [openadr3.entities :as entities]))
 
@@ -30,6 +31,21 @@
             (assoc-in ctx
                       [:request :throw-exceptions?] false))})
 
+(defn build-shared-http-client
+  "Build a shared Java HttpClient with connection timeout.
+  Reuse across requests to avoid per-request client creation."
+  [{:keys [connect-timeout-ms] :or {connect-timeout-ms 5000}}]
+  (hc/build-http-client {:connect-timeout connect-timeout-ms
+                         :redirect-policy :normal
+                         :version :http-1.1}))
+
+(defn inject-http-client
+  "Martian interceptor that injects a shared HttpClient into every request."
+  [http-client]
+  {:name ::inject-http-client
+   :enter (fn [ctx]
+            (assoc-in ctx [:request :http-client] http-client))})
+
 ;; -----------------------------------------------------------------------------
 ;; Client creation
 ;; -----------------------------------------------------------------------------
@@ -38,41 +54,55 @@
 
 (defn read-openapi-spec
   "Bootstrap a Martian client from an OpenAPI spec file.
-  Returns a Martian instance with optional interceptors and API root URL."
+  Returns a Martian instance with optional interceptors and API root URL.
+  When http-client is provided, prepends an interceptor to inject it into
+  every request, avoiding per-request HttpClient creation."
   ([filename]
-   (read-openapi-spec filename [] default-vtn-url))
+   (read-openapi-spec filename [] default-vtn-url nil))
   ([filename interceptors]
-   (read-openapi-spec filename interceptors default-vtn-url))
+   (read-openapi-spec filename interceptors default-vtn-url nil))
   ([filename interceptors url]
-   (assoc (mhhttp/bootstrap-openapi
-           filename
-           {:use-defaults true
-            :interceptors (concat
-                           interceptors
-                           mhhttp/default-interceptors)})
-          :api-root url)))
+   (read-openapi-spec filename interceptors url nil))
+  ([filename interceptors url http-client]
+   (let [all-interceptors (cond-> interceptors
+                            http-client (conj (inject-http-client http-client)))]
+     (assoc (mhhttp/bootstrap-openapi
+             filename
+             {:use-defaults true
+              :interceptors (concat
+                             all-interceptors
+                             mhhttp/default-interceptors)})
+            :api-root url))))
 
 (defn create-ven-client
-  "Create an authenticated VEN (Virtual End Node) client."
-  [api-specfile auth-token url]
-  (with-meta
-    (read-openapi-spec api-specfile
-                       [(create-authentication-header auth-token)
-                        (turn-off-exception-throwing)]
-                       url)
-    {:openadr/client-type :ven
-     :openadr/scopes #{"read_all" "read_targets" "read_ven_objects" "write_reports" "write_subscriptions" "write_vens"}}))
+  "Create an authenticated VEN (Virtual End Node) client.
+  When http-client is provided, it is shared across all requests."
+  ([api-specfile auth-token url]
+   (create-ven-client api-specfile auth-token url nil))
+  ([api-specfile auth-token url http-client]
+   (with-meta
+     (read-openapi-spec api-specfile
+                        [(create-authentication-header auth-token)
+                         (turn-off-exception-throwing)]
+                        url
+                        http-client)
+     {:openadr/client-type :ven
+      :openadr/scopes #{"read_all" "read_targets" "read_ven_objects" "write_reports" "write_subscriptions" "write_vens"}})))
 
 (defn create-bl-client
-  "Create an authenticated BL (Business Logic) client."
-  [api-specfile auth-token url]
-  (with-meta
-    (read-openapi-spec api-specfile
-                       [(create-authentication-header auth-token)
-                        (turn-off-exception-throwing)]
-                       url)
-    {:openadr/client-type :bl
-     :openadr/scopes #{"read_all" "read_bl" "write_programs" "write_events" "write_subscriptions" "write_vens"}}))
+  "Create an authenticated BL (Business Logic) client.
+  When http-client is provided, it is shared across all requests."
+  ([api-specfile auth-token url]
+   (create-bl-client api-specfile auth-token url nil))
+  ([api-specfile auth-token url http-client]
+   (with-meta
+     (read-openapi-spec api-specfile
+                        [(create-authentication-header auth-token)
+                         (turn-off-exception-throwing)]
+                        url
+                        http-client)
+     {:openadr/client-type :bl
+      :openadr/scopes #{"read_all" "read_bl" "write_programs" "write_events" "write_subscriptions" "write_vens"}})))
 
 (defn client-type
   "Returns OpenADR3 client-type keyword, :ven or :bl"
