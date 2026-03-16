@@ -35,10 +35,10 @@ A Clojure client library for the [OpenADR 3](https://www.openadr.org/) API, prov
 │               coerce-payload (by payload type)        │
 ├───────────────────────────────────────────────────────┤
 │          openadr3.entities.schema                     │
-│  Coerced Malli schemas: Program, Event, Ven, ...     │
+│  Coerced Malli schemas: Program, Event, Ven, ...      │
 ├───────────────────────────────────────────────────────┤
 │          openadr3.entities.schema.raw                 │
-│  Raw Malli schemas: Program, Event, Ven, ...         │
+│  Raw Malli schemas: Program, Event, Ven, ...          │
 ├───────────────────────────────────────────────────────┤
 │            Martian + Hato (HTTP)                      │
 │            OpenADR 3 OpenAPI spec (YAML)              │
