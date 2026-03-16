@@ -294,6 +294,14 @@ clojure -M:nrepl
 # nREPL running on port 7889
 ```
 
+### Run Tests
+
+```bash
+clojure -M:test
+```
+
+Uses [Kaocha](https://github.com/lambdaisland/kaocha). Test suites: `:api`, `:entities`, `:schema`.
+
 ### Dev REPL
 
 ```clojure

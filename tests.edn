@@ -1,0 +1,18 @@
+#kaocha/v1
+ {:tests [{:id          :api
+           :type        :kaocha.type/clojure.test
+           :source-paths ["src"]
+           :test-paths  ["test"]
+           :ns-patterns ["api-test$"]}
+          {:id          :entities
+           :type        :kaocha.type/clojure.test
+           :source-paths ["src"]
+           :test-paths  ["test"]
+           :ns-patterns ["entities-test$"]}
+          {:id          :schema
+           :type        :kaocha.type/clojure.test
+           :source-paths ["src"]
+           :test-paths  ["test"]
+           :ns-patterns ["schema-test$"]}]
+  :color?     true
+  :fail-fast? false}

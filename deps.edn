@@ -35,6 +35,10 @@
                           slipset/deps-deploy {:mvn/version "0.2.2"}}
                    :ns-default build}
 
+           :test {:extra-paths ["test"]
+                  :extra-deps {lambdaisland/kaocha {:mvn/version "1.91.1392"}}
+                  :main-opts ["-m" "kaocha.runner" "--config-file" "tests.edn"]}
+
            :nrepl {:extra-paths ["dev"]
                    :extra-deps {nrepl/nrepl {:mvn/version "1.6.0"}}
                    :jvm-opts ["-Djdk.attach.allowAttachSelf"]
