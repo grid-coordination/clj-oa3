@@ -84,6 +84,21 @@
                           (api/hash-map-by :name [{:name "a"} {:name "a"}])))))
 
 ;; ---------------------------------------------------------------------------
+;; find-by-name helpers (unit-level: verify tolerance of duplicate names)
+;; ---------------------------------------------------------------------------
+
+(deftest find-by-name-tolerates-duplicates-test
+  (testing "some-based lookup returns first match when duplicates exist"
+    (let [programs [{:programName "A" :id "1"}
+                    {:programName "B" :id "2"}
+                    {:programName "A" :id "3"}]
+          find (fn [name coll]
+                 (some #(when (= name (:programName %)) %) coll))]
+      (is (= {:programName "A" :id "1"} (find "A" programs)))
+      (is (= {:programName "B" :id "2"} (find "B" programs)))
+      (is (nil? (find "C" programs))))))
+
+;; ---------------------------------------------------------------------------
 ;; Authorization
 ;; ---------------------------------------------------------------------------
 

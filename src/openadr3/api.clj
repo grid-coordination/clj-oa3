@@ -345,10 +345,9 @@
   (martian/response-for openapi-client :delete-program {:program-id program-id}))
 
 (defn find-program-by-name
-  "Find a program by name. Returns nil if not found."
+  "Find a program by name. Returns the first match, or nil if not found."
   [client name]
-  (get (hash-map-by :programName (-> client get-programs :body))
-       name))
+  (some #(when (= name (:programName %)) %) (-> client get-programs :body)))
 
 ;; -----------------------------------------------------------------------------
 ;; Events endpoints
@@ -423,10 +422,9 @@
   (martian/response-for openapi-client :delete-ven {:ven-id ven-id}))
 
 (defn find-ven-by-name
-  "Find a VEN by name. Returns nil if not found."
+  "Find a VEN by name. Returns the first match, or nil if not found."
   [client name]
-  (get (hash-map-by :venName (-> client get-vens :body))
-       name))
+  (some #(when (= name (:venName %)) %) (-> client get-vens :body)))
 
 ;; -----------------------------------------------------------------------------
 ;; Resource endpoints
