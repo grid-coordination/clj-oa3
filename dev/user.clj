@@ -2,17 +2,18 @@
   (:require [openadr3.api :as api]
             [openadr3.entities :as entities]))
 
-;; OpenAPI spec file (symlinked from ../specification)
-(def specfile "resources/openadr3-specification/3.1.0/openadr3.yaml")
 (def vtn-url api/default-vtn-url)
 
 (comment
   ;; -------------------------------------------------------------------------
-  ;; Client setup
+  ;; Client setup (spec resolved from classpath automatically)
   ;; -------------------------------------------------------------------------
-  (def spec (api/read-openapi-spec specfile))
-  (def ven (api/create-ven-client specfile "ven_token" vtn-url))
-  (def bl (api/create-bl-client specfile "bl_token" vtn-url))
+  (def spec (api/read-openapi-spec (api/spec-path)))
+  (def ven (api/create-ven-client "ven_token" vtn-url))
+  (def bl (api/create-bl-client "bl_token" vtn-url))
+
+  ;; Use a specific spec version
+  (def ven-301 (api/create-ven-client "ven_token" vtn-url {:spec-version "3.0.1"}))
 
   ;; List routes
   (sort (api/all-routes spec))

@@ -8,7 +8,37 @@
             [martian.hato :as mhhttp]
             [hato.client :as hc]
             [clojure.set :as set]
-            [openadr3.entities :as entities]))
+            [openadr3.entities :as entities]
+            [clojure.java.io :as io]))
+
+;; -----------------------------------------------------------------------------
+;; Spec version resolution
+;; -----------------------------------------------------------------------------
+
+(def spec-versions
+  "Map of OA3 spec version string to classpath resource path."
+  {"3.0.0" "openadr3-specification/3.0.0/openadr3.yaml"
+   "3.0.1" "openadr3-specification/3.0.1/openadr3.yaml"
+   "3.1.0" "openadr3-specification/3.1.0/openadr3.yaml"})
+
+(def default-spec-version "3.1.0")
+
+(defn spec-path
+  "Resolve a spec version string to a classpath resource path.
+  Throws if the version is unknown or the resource is not found."
+  ([]
+   (spec-path default-spec-version))
+  ([version]
+   (let [resource-path (or (get spec-versions version)
+                           (throw (ex-info (str "Unknown OpenADR spec version: " version
+                                                ". Known versions: " (keys spec-versions))
+                                           {:version version
+                                            :known (keys spec-versions)})))
+         url (io/resource resource-path)]
+     (when-not url
+       (throw (ex-info (str "OpenAPI spec not found on classpath: " resource-path)
+                       {:resource-path resource-path :version version})))
+     (.getPath url))))
 
 ;; -----------------------------------------------------------------------------
 ;; Interceptors
@@ -76,33 +106,49 @@
 
 (defn create-ven-client
   "Create an authenticated VEN (Virtual End Node) client.
-  When http-client is provided, it is shared across all requests."
-  ([api-specfile auth-token url]
-   (create-ven-client api-specfile auth-token url nil))
-  ([api-specfile auth-token url http-client]
-   (with-meta
-     (read-openapi-spec api-specfile
-                        [(create-authentication-header auth-token)
-                         (turn-off-exception-throwing)]
-                        url
-                        http-client)
-     {:openadr/client-type :ven
-      :openadr/scopes #{"read_all" "read_targets" "read_ven_objects" "write_reports" "write_subscriptions" "write_vens"}})))
+  Uses the embedded spec (default version 3.1.0). Pass opts map to override
+  :spec-version or provide :http-client.
+
+  Examples:
+    (create-ven-client token url)
+    (create-ven-client token url {:spec-version \"3.0.1\"})
+    (create-ven-client token url {:http-client hc})"
+  ([auth-token url]
+   (create-ven-client auth-token url {}))
+  ([auth-token url opts]
+   (let [specfile    (spec-path (:spec-version opts default-spec-version))
+         http-client (:http-client opts)]
+     (with-meta
+       (read-openapi-spec specfile
+                          [(create-authentication-header auth-token)
+                           (turn-off-exception-throwing)]
+                          url
+                          http-client)
+       {:openadr/client-type :ven
+        :openadr/scopes #{"read_all" "read_targets" "read_ven_objects" "write_reports" "write_subscriptions" "write_vens"}}))))
 
 (defn create-bl-client
   "Create an authenticated BL (Business Logic) client.
-  When http-client is provided, it is shared across all requests."
-  ([api-specfile auth-token url]
-   (create-bl-client api-specfile auth-token url nil))
-  ([api-specfile auth-token url http-client]
-   (with-meta
-     (read-openapi-spec api-specfile
-                        [(create-authentication-header auth-token)
-                         (turn-off-exception-throwing)]
-                        url
-                        http-client)
-     {:openadr/client-type :bl
-      :openadr/scopes #{"read_all" "read_bl" "write_programs" "write_events" "write_subscriptions" "write_vens"}})))
+  Uses the embedded spec (default version 3.1.0). Pass opts map to override
+  :spec-version or provide :http-client.
+
+  Examples:
+    (create-bl-client token url)
+    (create-bl-client token url {:spec-version \"3.0.1\"})
+    (create-bl-client token url {:http-client hc})"
+  ([auth-token url]
+   (create-bl-client auth-token url {}))
+  ([auth-token url opts]
+   (let [specfile    (spec-path (:spec-version opts default-spec-version))
+         http-client (:http-client opts)]
+     (with-meta
+       (read-openapi-spec specfile
+                          [(create-authentication-header auth-token)
+                           (turn-off-exception-throwing)]
+                          url
+                          http-client)
+       {:openadr/client-type :bl
+        :openadr/scopes #{"read_all" "read_bl" "write_programs" "write_events" "write_subscriptions" "write_vens"}}))))
 
 (defn client-type
   "Returns OpenADR3 client-type keyword, :ven or :bl"

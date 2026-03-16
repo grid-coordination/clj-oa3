@@ -56,14 +56,13 @@ The specs are sourced from [grid-coordination/openadr3-specification](https://gi
 ```clojure
 (require '[openadr3.api :as api])
 
-;; Create authenticated clients
-(def ven (api/create-ven-client "resources/openadr3-specification/3.1.0/openadr3.yaml"
-                                 "my-ven-token"
-                                 "http://localhost:8080/openadr3/3.1.0"))
+;; Create authenticated clients (uses embedded 3.1.0 spec by default)
+(def ven (api/create-ven-client "my-ven-token" "http://localhost:8080/openadr3/3.1.0"))
+(def bl  (api/create-bl-client "my-bl-token" "http://localhost:8080/openadr3/3.1.0"))
 
-(def bl (api/create-bl-client "resources/openadr3-specification/3.1.0/openadr3.yaml"
-                               "my-bl-token"
-                               "http://localhost:8080/openadr3/3.1.0"))
+;; Each client can target a different spec version
+(def ven-301 (api/create-ven-client "my-ven-token" url {:spec-version "3.0.1"}))
+(def bl-300  (api/create-bl-client "my-bl-token" url {:spec-version "3.0.0"}))
 ```
 
 ### Raw API (HTTP responses)
@@ -167,9 +166,11 @@ ValuesMap payloads are coerced via the `coerce-payload` multimethod, dispatching
 
 | Function | Description |
 |----------|-------------|
-| `read-openapi-spec` | Bootstrap Martian client from spec file |
-| `create-ven-client` | Create authenticated VEN client |
-| `create-bl-client` | Create authenticated BL client |
+| `spec-versions` | Map of version string to classpath resource path |
+| `spec-path` | Resolve version string to spec file path (default `3.1.0`) |
+| `read-openapi-spec` | Bootstrap Martian client from explicit spec file path |
+| `create-ven-client` | Create authenticated VEN client (opts: `:spec-version`, `:http-client`) |
+| `create-bl-client` | Create authenticated BL client (opts: `:spec-version`, `:http-client`) |
 
 ### Raw CRUD (returns `{:status :body}`)
 
@@ -296,8 +297,8 @@ clojure -M:nrepl
 ### Dev REPL
 
 ```clojure
-(def ven (api/create-ven-client specfile "ven_token" vtn-url))
-(def bl  (api/create-bl-client specfile "bl_token" vtn-url))
+(def ven (api/create-ven-client "ven_token" vtn-url))
+(def bl  (api/create-bl-client "bl_token" vtn-url))
 
 (api/programs bl)                          ;; coerced entities
 (api/get-programs bl)                      ;; raw HTTP response
