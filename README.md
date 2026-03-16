@@ -45,32 +45,11 @@ A Clojure client library for the [OpenADR 3](https://www.openadr.org/) API, prov
 └───────────────────────────────────────────────────────┘
 ```
 
-## Prerequisites
+## OpenADR 3 Specification
 
-The OpenAPI spec is symlinked from the sibling `specification` repository:
+The OpenAPI spec files (versions 3.0.0, 3.0.1, 3.1.0) are embedded under `resources/openadr3-specification/`. No sibling repo or symlink is needed — `git clone` gives you everything.
 
-```
-resources/openadr3-specification -> ../../specification
-```
-
-Clone the [OpenADR 3 specification](https://github.com/OpenADRAlliance/specification) alongside this repo:
-
-```bash
-cd repo/
-git clone https://github.com/OpenADRAlliance/specification.git
-```
-
-Expected layout:
-
-```
-repo/
-  clj-oa3/                # this repo
-  specification/           # OpenADR 3 OpenAPI specs
-    3.0.0/
-    3.0.1/
-    3.1.0/
-    3.1.1/
-```
+The specs are sourced from [grid-coordination/openadr3-specification](https://github.com/grid-coordination/openadr3-specification) and are copyright the [OpenADR Alliance](https://www.openadr.org/), licensed under Apache 2.0. See `resources/openadr3-specification/ORIGIN.md` for details.
 
 ## Quick Start
 

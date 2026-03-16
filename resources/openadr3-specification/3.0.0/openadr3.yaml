@@ -1,0 +1,2354 @@
+openapi: 3.0.0
+servers:
+  - description: base path
+    url: http://localhost:8081/openadr3
+info:
+  title: OpenADR 3.0.0 API
+  version: "3.0.0"
+  description: |
+    The OpenADR 3.0.0 API supports energy retailer to energy customer Demand Response programs.
+    The API includes the following capabilities and operations:
+
+    __Manage programs:__
+
+    * Create/Update/Delete a program
+    * Search programs
+
+    __Manage events:__
+
+    * Create/Update/Delete an event
+    * Search events
+
+    __Manage reports:__
+
+    * Create/Update/Delete a report
+    * Search reports
+
+    __Manage subscriptions:__
+
+    * Create/Update/Delete subscriptions to programs, events, and reports
+    * Search subscriptions
+    * Subscriptions allows clients to register a callback URL (webhook) to be notified
+      on the change of state of a resource
+
+    __Manage vens:__
+
+    * Create/Update/Delete vens and ven resources
+    * Search ven and ven resources
+
+    __Manage tokens:__
+
+    * Obtain an access token
+    * This endpoint is provided as a convenience and may be neglected in a commercial implementation
+  contact:
+    email: frank@pajaritotech.com
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+paths:
+  /programs:
+    get:
+      tags:
+        - programs
+      summary: searches all programs
+      operationId: searchAllPrograms
+      description: |
+        List all programs known to the server.
+        Use skip and pagination query params to limit response size.
+      security:
+        - oAuth2ClientCredentials: [read_all]
+        # bearerAuth added here and elsewhere to support RI /ui service. See RI README for description of /ui
+        - bearerAuth: []
+      parameters:
+      - name: targetType
+        in: query
+        description: Indicates targeting type, e.g. GROUP
+        required: false
+        schema:
+          type: string
+      - name: targetValues
+        in: query
+        description: List of target values, e.g. group names
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      - name: skip
+        in: query
+        description: number of records to skip for pagination.
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - name: limit
+        in: query
+        description: maximum number of records to return.
+        required: false
+        schema:
+          type: integer
+          format: int32
+          maximum: 50
+          minimum: 0
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/program'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+    post:
+      tags:
+        - programs
+      summary: create a program
+      operationId: createProgram
+      description: Create a new program in the server.
+      security:
+        - oAuth2ClientCredentials: [write_programs]
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/program'
+        description: program item to add.
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/program'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '409':
+          description: Conflict. Implementation dependent response if program with the same programName exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+  /programs/{programID}:
+    parameters:
+      - name: programID
+        in: path
+        schema:
+          $ref: '#/components/schemas/objectID'
+        required: true
+        description: Object ID of the program object.
+    get:
+      tags:
+        - programs
+      summary: searches programs by program ID
+      operationId: searchProgramByProgramId
+      description:  |
+        Fetch the program specified by the programID in path.
+      security:
+        - oAuth2ClientCredentials: [read_all]
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/program'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+    put:
+      tags:
+        - programs
+      summary: update a program
+      operationId: updateProgram
+      description: Update an existing program with the programID in path.
+      security:
+        - oAuth2ClientCredentials: [write_programs]
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/program'
+        description: program item to update.
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/program'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '409':
+          description: Conflict. Implementation dependent response if program with the same programName exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+    delete:
+      tags:
+        - programs
+      summary: delete a program
+      operationId: deleteProgram
+      description: Delete an existing program with the programID in path.
+      security:
+        - oAuth2ClientCredentials: [write_programs]
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/program'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+  /reports:
+    get:
+      tags:
+        - reports
+      summary: searches all reports
+      operationId: searchAllReports
+      description: |
+        List all reports known to the server.
+        May filter results by programID and clientName as query param.
+        Use skip and pagination query params to limit response size.
+      security:
+        - oAuth2ClientCredentials: [read_all]
+        - bearerAuth: []
+      parameters:
+      - name: programID
+        in: query
+        schema:
+          $ref: '#/components/schemas/objectID'
+        required: false
+        description: filter results to reports with programID.
+        example: program-999
+      - name: clientName
+        in: query
+        schema:
+          type: string
+        required: false
+        description: filter results to reports with clientName.
+        example: 999
+      - name: skip
+        in: query
+        description: number of records to skip for pagination.
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - name: limit
+        in: query
+        description: maximum number of records to return.
+        required: false
+        schema:
+          type: integer
+          format: int32
+          maximum: 50
+          minimum: 0
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/report'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+    post:
+      tags:
+        - reports
+      summary: add a report
+      operationId: createReport
+      description: Create a new report in the server.
+      security:
+        - oAuth2ClientCredentials: [write_reports]
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/report'
+        description: report item to add.
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/report'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '409':
+          description: Conflict. Implementation dependent response if identical report exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+  /reports/{reportID}:
+    parameters:
+      - name: reportID
+        in: path
+        schema:
+          $ref: '#/components/schemas/objectID'
+        required: true
+        description: object ID of a report.
+    get:
+      tags:
+        - reports
+      summary: searches reports by reportID
+      operationId: searchReportsByReportID
+      description: |
+        Fetch the report specified by the reportID in path.
+      security:
+        - oAuth2ClientCredentials: [read_all]
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/report'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+    put:
+      tags:
+        - reports
+      summary: update a report
+      operationId: updateReport
+      description: Update the report specified by the reportID in path.
+      security:
+        - oAuth2ClientCredentials: [write_reports]
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/report'
+        description: Report item to update.
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/report'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '409':
+          description: Conflict. Implementation dependent response if program with the same programName exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+    delete:
+      tags:
+        - reports
+      summary: delete a report
+      operationId: deleteReport
+      description: Delete the program specified by the reportID in path.
+      security:
+        - oAuth2ClientCredentials: [write_reports]
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/report'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+  /events:
+    get:
+      tags:
+        - events
+      summary: searches all events
+      operationId: searchAllEvents
+      description: |
+        List all events known to the server. May filter results by programID query param.
+        Use skip and pagination query params to limit response size.
+      security:
+        - oAuth2ClientCredentials: [read_all]
+        - bearerAuth: []
+      parameters:
+      - name: programID
+        in: query
+        schema:
+          $ref: '#/components/schemas/objectID'
+        required: false
+        description: filter results to events with programID.
+        example: program-999
+      - name: targetType
+        in: query
+        description: Indicates targeting type, e.g. GROUP
+        required: false
+        schema:
+          type: string
+      - name: targetValues
+        in: query
+        description: List of target values, e.g. group names
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      - name: skip
+        in: query
+        description: number of records to skip for pagination.
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      - name: limit
+        in: query
+        description: maximum number of records to return.
+        required: false
+        schema:
+          type: integer
+          format: int32
+          maximum: 50
+          minimum: 0
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/event'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+    post:
+      tags:
+        - events
+      summary: create an event
+      operationId: createEvent
+      description: Create a new event in the server.
+      security:
+        - oAuth2ClientCredentials: [write_events]
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/event'
+        description: Event item to add.
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/event'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '409':
+          description: Conflict. Implementation dependent response if event with  same name already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+  /events/{eventID}:
+    parameters:
+      - name: eventID
+        in: path
+        schema:
+          $ref: '#/components/schemas/objectID'
+        description: object ID of event.
+        required: true
+    get:
+      tags:
+        - events
+      summary: search events by ID
+      operationId: searchEventsByID
+      description: |
+        Fetch event associated with the eventID in path.
+      security:
+        - oAuth2ClientCredentials: [read_all]
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/event'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+    put:
+      tags:
+        - events
+      summary: update an event
+      operationId: updateEvent
+      description: Update the event specified by the eventID in path.
+      security:
+        - oAuth2ClientCredentials: [write_events]
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/event'
+        description: event item to update.
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/event'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '409':
+          description: Conflict. Implementation dependent response if program with the same programName exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+    delete:
+      tags:
+        - events
+      summary: delete an event
+      operationId: deleteEvent
+      description: |
+        Delete the event specified by the eventID in path.
+      security:
+        - oAuth2ClientCredentials: [write_events]
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/event'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+  /subscriptions:
+    get:
+      tags:
+        - subscriptions
+      summary: search subscriptions
+      operationId: searchSubscriptions
+      description: |
+        List all subscriptions.
+        May filter results by programID and clientID as query params.
+        May filter results by objects as query param. See objectTypes schema.
+        Use skip and pagination query params to limit response size.
+      security:
+        - oAuth2ClientCredentials: [read_all]
+        - bearerAuth: []
+      parameters:
+      - name: programID
+        in: query
+        schema:
+          $ref: '#/components/schemas/objectID'
+        description: filter results to subscriptions with programID.
+        required: false
+      - name: clientName
+        in: query
+        schema:
+          type: string
+        description: filter results to subscriptions with clientName.
+        required: false
+      - name: targetType
+        in: query
+        description: Indicates targeting type, e.g. GROUP
+        required: false
+        schema:
+          type: string
+      - name: targetValues
+        in: query
+        description: List of target values, e.g. group names
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      - name: objects
+        in: query
+        description: list of objects to subscribe to.
+        required: false
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/objectTypes'
+      - name: skip
+        in: query
+        description: number of records to skip for pagination.
+        required: false
+        style: form
+        explode: true
+        schema:
+          minimum: 0
+          type: integer
+          format: int32
+      - name: limit
+        in: query
+        description: maximum number of records to return.
+        required: false
+        style: form
+        explode: true
+        schema:
+          maximum: 50
+          minimum: 0
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/subscription'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+    post:
+      tags:
+        - subscriptions
+      summary: create subscription
+      operationId: createSubscription
+      description: Create a new subscription.
+      security:
+        - oAuth2ClientCredentials: [write_subscriptions]
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/subscription'
+      callbacks:   # Callback definition
+        notifyEvent:   # callback Event name
+          '{$request.body#/callbackUrl}':   # The callback URL. Refers to the passed URL
+            post:
+              requestBody:   # Contents of the callback message
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: '#/components/schemas/notification'
+              responses:   # Expected responses to the callback message
+                '200':
+                  description: Your server returns this code if it accepts the callback.
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/subscription'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '409':
+          description: Conflict. Implementation dependent response if identical object already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+  /subscriptions/{subscriptionID}:
+    parameters:
+      - name: subscriptionID
+        in: path
+        schema:
+          $ref: '#/components/schemas/objectID'
+        description: object ID of the associated subscription.
+        required: true
+    get:
+      tags:
+        - subscriptions
+      summary: search subscriptions by ID
+      operationId: searchSubscriptionByID
+      description: Return the subscription specified by subscriptionID specified in path.
+      security:
+        - oAuth2ClientCredentials: [read_all]
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/subscription'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+    put:
+      tags:
+        - subscriptions
+      summary: update  subscription
+      operationId: updateSubscription
+      description: Update the subscription specified by subscriptionID specified in path.
+      security:
+        - oAuth2ClientCredentials: [write_subscriptions]
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/subscription'
+        description: subscription item to update.
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/subscription'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '409':
+          description: Conflict. Implementation dependent response if program with the same programName exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+    delete:
+      tags:
+        - subscriptions
+      summary: delete  subscription
+      operationId: deleteSubscription
+      description: Delete the subscription specified by subscriptionID specified in path.
+      security:
+        - oAuth2ClientCredentials: [write_subscriptions]
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/subscription'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+  /vens:
+    get:
+      tags:
+        - vens
+      summary: search vens
+      operationId: searchVens
+      description: |
+        List all vens.
+        Use skip and pagination query params to limit response size.
+      security:
+        - oAuth2ClientCredentials: [read_all]
+        - bearerAuth: []
+      parameters:
+      - name: targetType
+        in: query
+        description: Indicates targeting type, e.g. GROUP
+        required: false
+        schema:
+          type: string
+      - name: targetValues
+        in: query
+        description: List of target values, e.g. group names
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      - name: skip
+        in: query
+        description: number of records to skip for pagination.
+        required: false
+        style: form
+        explode: true
+        schema:
+          minimum: 0
+          type: integer
+          format: int32
+      - name: limit
+        in: query
+        description: maximum number of records to return.
+        required: false
+        style: form
+        explode: true
+        schema:
+          maximum: 50
+          minimum: 0
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ven'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+    post:
+      tags:
+        - vens
+      summary: create ven
+      operationId: createVen
+      description: Create a new ven.
+      security:
+        - oAuth2ClientCredentials: [write_vens]
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ven'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ven'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '409':
+          description: Conflict. Implementation dependent response if ven with same venIdentifier already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+  /vens/{venID}:
+    parameters:
+      - name: venID
+        in: path
+        schema:
+          $ref: '#/components/schemas/objectID'
+        description: object ID of ven.
+        required: true
+    get:
+      tags:
+        - vens
+      summary: search vens by ID
+      operationId: searchVenByID
+      description: Return the ven specified by venID specified in path.
+      security:
+        - oAuth2ClientCredentials: [read_all]
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ven'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+    put:
+      tags:
+        - vens
+      summary: update  ven
+      operationId: updateVen
+      description: Update the ven specified by venID specified in path.
+      security:
+        - oAuth2ClientCredentials: [write_vens]
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ven'
+        description: ven item to update.
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ven'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '409':
+          description: Conflict. Implementation dependent response if program with the same programName exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+    delete:
+      tags:
+        - vens
+      summary: delete  ven
+      operationId: deleteVen
+      description: Delete the ven specified by venID specified in path.
+      security:
+        - oAuth2ClientCredentials: [write_vens]
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ven'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+  /vens/{venID}/resources:
+    parameters:
+      - name: venID
+        in: path
+        schema:
+          $ref: '#/components/schemas/objectID'
+        description: Numeric ID of ven.
+        required: true
+    get:
+      tags:
+        - vens
+      summary: search ven resources
+      operationId: searchVenResources
+      description: Return the ven resources specified by venID specified in path.
+      security:
+        - oAuth2ClientCredentials: [read_all]
+        - bearerAuth: []
+      parameters:
+      - name: targetType
+        in: query
+        description: Indicates targeting type, e.g. GROUP
+        required: false
+        schema:
+          type: string
+      - name: targetValues
+        in: query
+        description: List of target values, e.g. group names
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      - name: skip
+        in: query
+        description: number of records to skip for pagination.
+        required: false
+        style: form
+        explode: true
+        schema:
+          minimum: 0
+          type: integer
+          format: int32
+      - name: limit
+        in: query
+        description: maximum number of records to return.
+        required: false
+        style: form
+        explode: true
+        schema:
+          maximum: 50
+          minimum: 0
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/resource'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+    post:
+      tags:
+        - vens
+      summary: create resource
+      operationId: createResource
+      description: Create a new resource.
+      security:
+        - oAuth2ClientCredentials: [write_vens]
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/resource'
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/resource'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '409':
+          description: Conflict. Implementation dependent response if resource with  same resourceIdentifier already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+  /vens/{venID}/resources/{resourceID}:
+    parameters:
+      - name: venID
+        in: path
+        schema:
+          $ref: '#/components/schemas/objectID'
+        description: object ID of the associated ven.
+        required: true
+      - name: resourceID
+        in: path
+        schema:
+          $ref: '#/components/schemas/objectID'
+        description: object ID of the resource.
+        required: true
+    get:
+      tags:
+        - vens
+      summary: search ven resources by ID
+      operationId: searchVenResourceByID
+      description: Return the ven resource specified by venID and resourceID specified in path.
+      security:
+        - oAuth2ClientCredentials: [read_all]
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/resource'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+    put:
+      tags:
+        - vens
+      summary: update  ven resource
+      operationId: updateVenResource
+      description: Update the ven resource specified by venID and resourceID specified in path.
+      security:
+        - oAuth2ClientCredentials: [write_vens]
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/resource'
+        description: resource item to update.
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/resource'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '409':
+          description: Conflict. Implementation dependent response if program with the same programName exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+    delete:
+      tags:
+        - vens
+      summary: delete  ven resource
+      operationId: deleteVenResource
+      description: Delete the ven resource specified by venID and resourceID specified in path.
+      security:
+        - oAuth2ClientCredentials: [write_vens]
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/resource'
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+  /auth/token:
+    get:
+      parameters:
+        - name: clientID
+          in: header
+          description: client ID to exchange for bearer token.
+          required: true
+          schema:
+            type: string
+            example: ven_client_99
+        - name: clientSecret
+          in: header
+          description: client secret to exchange for bearer token.
+          required: true
+          schema:
+            type: string
+            example: ven_secret_99
+      tags:
+        - Auth
+      summary: fetch a token
+      operationId: fetchToken
+      description: Return an access token based on clientID and clientSecret.
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                type: string
+        '400':
+          description: Bad Request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '403':
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+        '500':
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/problem'
+components:
+  schemas:
+    # examples are provided at the element level to aid readability and to support Reference Implementation UI
+    program:
+      type: object
+      description: Provides program specific metadata from VTN to VEN.
+      required:
+        - programName
+      properties:
+        id:
+          $ref: '#/components/schemas/objectID'
+          # VTN provisioned ID of this object instance.
+        createdDateTime:
+          $ref: '#/components/schemas/dateTime'
+          #  VTN provisioned on object creation.
+        modificationDateTime:
+          $ref: '#/components/schemas/dateTime'
+          #  VTN provisioned on object modification.
+        objectType:
+          type: string
+          description: Used as discriminator, e.g. notification.object
+          enum: [PROGRAM]
+        programName:
+          type: string
+          description: Short name to uniquely identify program.
+          example: ResTOU
+        programLongName:
+          type: string
+          description: Long name of program for human readability.
+          example: Residential Time of Use-A
+          nullable: true
+          default: null
+        retailerName:
+          type: string
+          description: Short name of energy retailer providing the program.
+          example: ACME
+          nullable: true
+          default: null
+        retailerLongName:
+          type: string
+          description: Long name of energy retailer for human readability.
+          example: ACME Electric Inc.
+          nullable: true
+          default: null
+        programType:
+          type: string
+          description: A program defined categorization.
+          example: PRICING_TARIFF
+          nullable: true
+          default: null
+        country:
+          type: string
+          description: Alpha-2 code per ISO 3166-1.
+          example: US
+          nullable: true
+          default: null
+        principalSubdivision:
+          type: string
+          description: Coding per ISO 3166-2. E.g. state in US.
+          example: CO
+          nullable: true
+          default: null
+        timeZoneOffset:
+          $ref: '#/components/schemas/duration'
+          # Number of hours different from UTC for the standard time applicable to the program.
+        intervalPeriod:
+          $ref: '#/components/schemas/intervalPeriod'
+          # The temporal span of the program, could be years long.
+        programDescriptions:
+          type: array
+          description: A list of programDescriptions
+          nullable: true
+          default: null
+          items:
+            required:
+              - URL
+            properties:
+              URL:
+                type: string
+                format: uri
+                description: A human or machine readable program description
+                example: www.myCorporation.com/myProgramDescription
+        bindingEvents:
+          type: boolean
+          description: True if events are fixed once transmitted.
+          example: false
+          default: false
+        localPrice:
+          type: boolean
+          description: True if events have been adapted from a grid event.
+          example: false
+          default: false
+        payloadDescriptors:
+          type: array
+          description: A list of payloadDescriptors.
+          nullable: true
+          default: null
+          items:
+            anyOf:
+              - $ref: '#/components/schemas/eventPayloadDescriptor'
+              - $ref: '#/components/schemas/reportPayloadDescriptor'
+            discriminator:
+              propertyName: objectType
+        targets:
+          type: array
+          description: A list of valuesMap objects.
+          nullable: true
+          default: null
+          items:
+            $ref: '#/components/schemas/valuesMap'
+    report:
+      type: object
+      description: report object.
+      required:
+        - programID
+        - eventID
+        - clientName
+        - resources
+      properties:
+        id:
+          $ref: '#/components/schemas/objectID'
+          # VTN provisioned ID of this object instance.
+        createdDateTime:
+          $ref: '#/components/schemas/dateTime'
+          #  VTN provisioned on object creation.
+        modificationDateTime:
+          $ref: '#/components/schemas/dateTime'
+          #  VTN provisioned on object modification.
+        objectType:
+          type: string
+          description: Used as discriminator, e.g. notification.object
+          enum: [REPORT]
+        programID:
+          $ref: '#/components/schemas/objectID'
+          # ID attribute of program object this report is associated with.
+        eventID:
+          $ref: '#/components/schemas/objectID'
+          # ID attribute of event object this report is associated with.
+        clientName:
+          type: string
+          description: User generated identifier; may be VEN ID provisioned during program enrollment.
+          example: VEN-999
+          nullable: true
+          default: null
+        reportName:
+          type: string
+          description: User defined string for use in debugging or User Interface.
+          example: Battery_usage_04112023
+          nullable: true
+          default: null
+        payloadDescriptors:
+          type: array
+          description: A list of reportPayloadDescriptors.
+          nullable: true
+          default: null
+          items:
+            $ref: '#/components/schemas/reportPayloadDescriptor'
+          # An optional list of objects that provide context to payload types.
+        resources:
+          type: array
+          description: A list of objects containing report data for a set of resources.
+          items:
+            type: object
+            description: Report data associated with a resource.
+            required:
+              - resourceName
+              - intervals
+            properties:
+              resourceName:
+                type: string
+                description: User generated identifier. A value of AGGREGATED_REPORT indicates an aggregation of more that one resource's data
+                example: RESOURCE-999
+                nullable: true
+                default: null
+              intervalPeriod:
+                $ref: '#/components/schemas/intervalPeriod'
+                # Defines default start and durations of intervals.
+              intervals:
+                type: array
+                description: A list of interval objects.
+                items:
+                  $ref: '#/components/schemas/interval'
+    event:
+      type: object
+      description: |
+        Event object to communicate a Demand Response request to VEN.
+        If intervalPeriod is present, sets start time and duration of intervals.
+      required:
+        - programID
+        - intervals
+      properties:
+        id:
+          $ref: '#/components/schemas/objectID'
+          # VTN provisioned ID of this object instance.
+        createdDateTime:
+          $ref: '#/components/schemas/dateTime'
+          #  VTN provisioned on object creation.
+        modificationDateTime:
+          $ref: '#/components/schemas/dateTime'
+          #  VTN provisioned on object modification.
+        objectType:
+          type: string
+          description: Used as discriminator, e.g. notification.object
+          enum: [EVENT]
+        programID:
+          $ref: '#/components/schemas/objectID'
+          # ID attribute of program object this event is associated with.
+        eventName:
+          type: string
+          description: User defined string for use in debugging or User Interface.
+          example: price event 11-18-2022
+          nullable: true
+          default: null
+        priority:
+          type: integer
+          description: Relative priority of event. A lower number is a higher priority.
+          example: 0
+          nullable: true
+          default: null
+        targets:
+          type: array
+          description: A list of valuesMap objects.
+          nullable: true
+          default: null
+          items:
+            $ref: '#/components/schemas/valuesMap'
+        reportDescriptors:
+          type: array
+          description: A list of reportDescriptor objects. Used to request reports from VEN.
+          nullable: true
+          default: null
+          items:
+            $ref: '#/components/schemas/reportDescriptor'
+        payloadDescriptors:
+          type: array
+          description: A list of payloadDescriptor objects.
+          nullable: true
+          default: null
+          items:
+            $ref: '#/components/schemas/eventPayloadDescriptor'
+        intervalPeriod:
+          $ref: '#/components/schemas/intervalPeriod'
+          # Defines default start and durations of intervals.
+        intervals:
+          type: array
+          description: A list of interval objects.
+          items:
+            $ref: '#/components/schemas/interval'
+    subscription:
+      type: object
+      description: |
+        An object created by a client to receive notification of operations on objects.
+        Clients may subscribe to be notified when a type of object is created,
+        updated, or deleted.
+      required:
+        - clientName
+        - programID
+        - objectOperations
+      properties:
+        id:
+          $ref: '#/components/schemas/objectID'
+          # VTN provisioned ID of this object instance.
+        createdDateTime:
+          $ref: '#/components/schemas/dateTime'
+          #  VTN provisioned on object creation.
+        modificationDateTime:
+          $ref: '#/components/schemas/dateTime'
+          #  VTN provisioned on object modification.
+        objectType:
+          type: string
+          description: Used as discriminator, e.g. notification.object
+          enum: [SUBSCRIPTION]
+        clientName:
+          type: string
+          description: User generated identifier, may be VEN identifier provisioned during program enrollment.
+          example: VEN-999
+          nullable: true
+          default: null
+        programID:
+          $ref: '#/components/schemas/objectID'
+          # ID attribute of program object this subscription is associated with.
+        objectOperations:
+          type: array
+          description: list of objects and operations to subscribe to.
+          items:
+            type: object
+            description: object type, operations, and callbackUrl.
+            required:
+              - objects
+              - operations
+              - callbackUrl
+            properties:
+              objects:
+                type: array
+                description: list of objects to subscribe to.
+                items:
+                  $ref: '#/components/schemas/objectTypes'
+              operations:
+                type: array
+                description: list of operations to subscribe to.
+                items:
+                  type: string
+                  description: object operation to subscribe to.
+                  example: POST
+                  enum: [GET, POST, PUT, DELETE]
+              callbackUrl:
+                type: string
+                format: uri
+                description: User provided webhook URL.
+                example: https://myserver.com/send/callback/here
+              bearerToken:
+                type: string
+                description: |
+                  User provided token.
+                  To avoid custom integrations, callback endpoints
+                  should accept the provided bearer token to authenticate VTN requests.
+                example: NCEJGI9E8ER9802UT9HUG
+                nullable: true
+                default: null
+        targets:
+          type: array
+          description: A list of valuesMap objects. Used by server to filter callbacks.
+          nullable: true
+          default: null
+          items:
+            $ref: '#/components/schemas/valuesMap'
+    ven:
+      type: object
+      description: Ven represents a client with the ven role.
+      required:
+        - venName
+      properties:
+        id:
+          $ref: '#/components/schemas/objectID'
+          # VTN provisioned ID of this object instance.
+        createdDateTime:
+          $ref: '#/components/schemas/dateTime'
+          #  VTN provisioned on object creation.
+        modificationDateTime:
+          $ref: '#/components/schemas/dateTime'
+          #  VTN provisioned on object modification.
+        objectType:
+          type: string
+          description: Used as discriminator, e.g. notification.object.
+          enum: [VEN]
+        venName:
+          type: string
+          description: User generated identifier, may be VEN identifier provisioned during program enrollment.
+          example: VEN-999
+          nullable: true
+          default: null
+        attributes:
+          type: array
+          description: A list of valuesMap objects describing attributes.
+          items:
+            $ref: '#/components/schemas/valuesMap'
+        targets:
+          type: array
+          description: A list of valuesMap objects describing target criteria.
+          items:
+            $ref: '#/components/schemas/valuesMap'
+        resources:
+          type: array
+          description: A list of resource objects representing end-devices or systems.
+          nullable: true
+          default: null
+          items:
+            $ref: '#/components/schemas/resource'
+    resource:
+      type: object
+      description: |
+        A resource is an energy device or system subject to control by a VEN.
+      required:
+        - resourceName
+      properties:
+        id:
+          $ref: '#/components/schemas/objectID'
+          # VTN provisioned ID of this object instance.
+        createdDateTime:
+          $ref: '#/components/schemas/dateTime'
+          #  VTN provisioned on object creation.
+        modificationDateTime:
+          $ref: '#/components/schemas/dateTime'
+          #  VTN provisioned on object modification.
+        objectType:
+          type: string
+          description: Used as discriminator, e.g. notification.object
+          enum: [RESOURCE]
+        resourceName:
+          type: string
+          description: User generated identifier, resource may be configured with identifier out-of-band.
+          example: RESOURCE-999
+          nullable: true
+          default: null
+        venID:
+          $ref: '#/components/schemas/objectID'
+          # VTN provisioned on object creation based on path, e.g. POST <>/ven/{venID}/resources.
+        attributes:
+          type: array
+          description: A list of valuesMap objects describing attributes.
+          items:
+            $ref: '#/components/schemas/valuesMap'
+        targets:
+          type: array
+          description: A list of valuesMap objects describing target criteria.
+          items:
+            $ref: '#/components/schemas/valuesMap'
+    interval:
+      type: object
+      description: |
+        An object defining a temporal window and a list of valuesMaps.
+        if intervalPeriod present may set temporal aspects of interval or override event.intervalPeriod.
+      required:
+        - id
+        - payloads
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: A client generated number assigned an interval object. Not a sequence number.
+          example: 0
+        intervalPeriod:
+          $ref: '#/components/schemas/intervalPeriod'
+          # Defines default start and durations of intervals.
+        payloads:
+          type: array
+          description: A list of valuesMap objects.
+          items:
+            $ref: '#/components/schemas/valuesMap'
+    intervalPeriod:
+      type: object
+      description: |
+        Defines temporal aspects of intervals.
+        A duration of default null indicates infinity.
+        A randomizeStart of default null indicates no randomization.
+      required:
+        - start
+      properties:
+        start:
+          $ref: '#/components/schemas/dateTime'
+          #  The start time of an interval or set of intervals.
+        duration:
+          $ref: '#/components/schemas/duration'
+          #  The duration of an interval or set of intervals.
+        randomizeStart:
+          $ref: '#/components/schemas/duration'
+          #  Indicates a randomization time that may be applied to start.
+    valuesMap:
+      type: object
+      description: |
+        Represents one or more values associated with a type.
+        E.g. a type of PRICE contains a single float value.
+      required:
+        - type
+        - values
+      properties:
+        type:
+          type: string
+          description: |
+            Enumerated or private string signifying the nature of values.
+            E.G. "PRICE" indicates value is to be interpreted as a currency.
+          example: PRICE
+        values:
+            type: array
+            description: A list of data points. Most often a singular value such as a price.
+            example: [0.17]
+            items:
+              anyOf:
+                - type: number
+                - type: integer
+                - type: string
+                - type: boolean
+                - $ref: '#/components/schemas/point'
+    point:
+      type: object
+      description: A pair of floats typically used as a point on a 2 dimensional grid.
+      required:
+        - x
+        - y
+      properties:
+        x:
+          type: number
+          format: float
+          description: A value on an x axis.
+          example: 1.0
+          nullable: true
+          default: null
+        y:
+          type: number
+          format: float
+          description: A value on a y axis.
+          example: 2.0
+          nullable: true
+          default: null
+    eventPayloadDescriptor:
+      type: object
+      description: |
+        Contextual information used to interpret event valuesMap values.
+        E.g. a PRICE payload simply contains a price value, an
+        associated descriptor provides necessary context such as units and currency.
+      required:
+        - payloadType
+      properties:
+        objectType:
+          type: string
+          description: Used as discriminator, e.g. program.payloadDescriptors
+          default: EVENT_PAYLOAD_DESCRIPTOR
+        payloadType:
+          type: string
+          description: Enumerated or private string signifying the nature of values.
+          example: PRICE
+        units:
+          type: string
+          description: Units of measure.
+          example: KWH
+          default: KWH
+        currency:
+          type: string
+          description: Currency of price payload.
+          example: USD
+          default: USD
+    reportPayloadDescriptor:
+      type: object
+      description: |
+        Contextual information used to interpret report payload values.
+        E.g. a USAGE payload simply contains a usage value, an
+        associated descriptor provides necessary context such as units and data quality.
+      required:
+        - payloadType
+      properties:
+        objectType:
+          type: string
+          description: Used as discriminator, e.g. program.payloadDescriptors
+          default: REPORT_PAYLOAD_DESCRIPTOR
+        payloadType:
+          type: string
+          description: Enumerated or private string signifying the nature of values.
+          example: USAGE
+        readingType:
+          type: string
+          description: Enumerated or private string signifying the type of reading.
+          example: DIRECT_READ
+          default: DIRECT_READ
+        units:
+          type: string
+          description: Units of measure.
+          example: KWH
+          default: KWH
+        accuracy:
+          type: number
+          format: float
+          description: A quantification of the accuracy of a set of payload values.
+          example: 0.0
+          default: 0.0
+        confidence:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 100
+          description: A quantification of the confidence in a set of payload values.
+          example: 100
+          default: 100
+    reportDescriptor:
+      type: object
+      description: |
+        An object that may be used to request a report from a VEN.
+        See OpenADR REST User Guide for detailed description of how configure a report request.
+      required:
+        - payloadType
+      properties:
+        payloadType:
+          type: string
+          description: Enumerated or private string signifying the nature of values.
+          example: USAGE
+        readingType:
+          type: string
+          description: Enumerated or private string signifying the type of reading.
+          example: DIRECT_READ
+          default: DIRECT_READ
+        targets:
+          type: array
+          description: A list of valuesMap objects.
+          nullable: true
+          default: null
+          items:
+            $ref: '#/components/schemas/valuesMap'
+        aggregate:
+          type: boolean
+          description: |
+            True if report should aggregate results from all targeted resources.
+            False if report includes results for each resource.
+          example: false
+          default: false
+        startInterval:
+          type: integer
+          format: int32
+          description: |
+            The interval on which to generate a report.
+            -1 indicates generate report at end of last interval.
+          example: -1
+          default: -1
+        numIntervals:
+          type: integer
+          format: int32
+          description: |
+            The number of intervals to include in a report.
+            -1 indicates that all intervals are to be included.
+          example: -1
+          default: -1
+        historical:
+          type: boolean
+          description: |
+            True indicates report on intervals preceding startInterval.
+            False indicates report on intervals following startInterval (e.g. forecast).
+          example: true
+          default: true
+        frequency:
+          type: integer
+          format: int32
+          description: |
+            Number of intervals that elapse between reports.
+            -1 indicates same as numIntervals.
+          example: -1
+          default: -1
+        repeat:
+          type: integer
+          format: int32
+          description: |
+            Number of times to repeat report.
+            1 indicates generate one report.
+            -1 indicates repeat indefinitely.
+          example: 1
+          default: 1
+    objectID:
+        type: string
+        pattern: '^[a-zA-Z0-9_-]*$'
+        minLength: 1
+        maxLength: 128
+        description: URL safe VTN assigned object ID.
+        example: object-999
+    notification:
+      type: object
+      description: |
+        VTN generated object included in request to subscription callbackUrl.
+      required:
+        - objectType
+        - operation
+        - object
+      properties:
+        objectType:
+          $ref: '#/components/schemas/objectTypes'
+        operation:
+          type: string
+          description: the operation on on object that triggered the notification.
+          example: POST
+          enum: [GET, POST, PUT, DELETE]
+        targets:
+          type: array
+          description: A list of valuesMap objects.
+          nullable: true
+          default: null
+          items:
+            $ref: '#/components/schemas/valuesMap'
+        object:
+          type: object
+          description: the object that is the subject of the notification.
+          example: {}
+          oneOf:
+            - $ref: '#/components/schemas/program'
+            - $ref: '#/components/schemas/report'
+            - $ref: '#/components/schemas/event'
+            - $ref: '#/components/schemas/subscription'
+            - $ref: '#/components/schemas/ven'
+            - $ref: '#/components/schemas/resource'
+          discriminator:
+            propertyName: objectType
+    objectTypes:
+      type: string
+      description: Types of objects addressable through API.
+      example: EVENT
+      enum: [PROGRAM, EVENT, REPORT, SUBSCRIPTION, VEN, RESOURCE]
+    dateTime:
+      type: string
+      description: datetime in ISO 8601 format
+      example: 2023-06-15T09:30:00Z
+      nullable: true
+      default: null
+    duration:
+      type: string
+      description: duration in ISO 8601 format
+      example: PT1H
+      nullable: true
+      default: null
+    problem:
+      type: object
+      description: |
+        reusable error response. From https://opensource.zalando.com/problem/schema.yaml.
+      properties:
+        type:
+          type: string
+          format: uri
+          description: |
+            An absolute URI that identifies the problem type.
+            When dereferenced, it SHOULD provide human-readable documentation for the problem type
+            (e.g., using HTML).
+          default: 'about:blank'
+          example: 'https://zalando.github.io/problem/constraint-violation'
+        title:
+          type: string
+          description: |
+            A short, summary of the problem type. Written in english and readable
+            for engineers (usually not suited for non technical stakeholders and
+            not localized); example: Service Unavailable.
+        status:
+          type: integer
+          format: int32
+          description: |
+            The HTTP status code generated by the origin server for this occurrence
+            of the problem.
+          minimum: 100
+          maximum: 600
+          exclusiveMaximum: true
+          example: 503
+        detail:
+          type: string
+          description: |
+            A human readable explanation specific to this occurrence of the
+            problem.
+          example: Connection to database timed out
+        instance:
+          type: string
+          format: uri
+          description: |
+            An absolute URI that identifies the specific occurrence of the problem.
+            It may or may not yield further information if dereferenced.
+  securitySchemes:
+    oAuth2ClientCredentials:
+      type: oauth2
+      description: Client credential flow.
+      # x-tokenInfoFunc: auth.verifyToken
+      flows:
+        clientCredentials:
+          tokenUrl: auth/token
+          scopes:
+            read_all: VENs and BL can read all resources
+            write_programs: Only BL can write to programs
+            write_events: Only BL can write to events
+            write_reports: only VENs can write to reports
+            write_subscriptions: VENs and BL can write to subscriptions
+            write_vens: VENS and BL can write to vens and resources
+    bearerAuth:            # arbitrary name for the security scheme
+      type: http
+      scheme: bearer
+      bearerFormat: JWT    # optional, arbitrary value for documentation purposes
