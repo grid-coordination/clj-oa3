@@ -1,6 +1,16 @@
 # clj-oa3
 
+[![Clojars Project](https://img.shields.io/clojars/v/energy.grid-coordination/clj-oa3.svg)](https://clojars.org/energy.grid-coordination/clj-oa3)
+
 A Clojure client library for the [OpenADR 3](https://www.openadr.org/) API, providing spec-driven HTTP access to VTN (Virtual Top Node) servers.
+
+## Installation
+
+Add to your `deps.edn`:
+
+```clojure
+{:deps {energy.grid-coordination/clj-oa3 {:mvn/version "0.1.0-SNAPSHOT"}}}
+```
 
 ## Features
 
