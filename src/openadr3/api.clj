@@ -24,7 +24,9 @@
 (def default-spec-version "3.1.0")
 
 (defn spec-path
-  "Resolve a spec version string to a classpath resource path.
+  "Resolve a spec version string to a classpath resource name.
+  Returns the resource name string (not a filesystem path) so that
+  martian.file/local-resource can find it via clojure.java.io/resource.
   Throws if the version is unknown or the resource is not found."
   ([]
    (spec-path default-spec-version))
@@ -33,12 +35,11 @@
                            (throw (ex-info (str "Unknown OpenADR spec version: " version
                                                 ". Known versions: " (keys spec-versions))
                                            {:version version
-                                            :known (keys spec-versions)})))
-         url (io/resource resource-path)]
-     (when-not url
+                                            :known (keys spec-versions)})))]
+     (when-not (io/resource resource-path)
        (throw (ex-info (str "OpenAPI spec not found on classpath: " resource-path)
                        {:resource-path resource-path :version version})))
-     (.getPath url))))
+     resource-path)))
 
 ;; -----------------------------------------------------------------------------
 ;; Interceptors
