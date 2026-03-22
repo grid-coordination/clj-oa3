@@ -1,6 +1,7 @@
 (ns build
   (:refer-clojure :exclude [test])
   (:require [clojure.tools.build.api :as b]
+            [codox.md.build :as doc]
             [deps-deploy.deps-deploy :as dd]))
 
 (def lib 'energy.grid-coordination/clj-oa3)
@@ -37,8 +38,13 @@
   (let [opts (jar-opts opts)]
     (println "\nWriting pom.xml...")
     (b/write-pom opts)
+    (println "\nGenerating API docs...")
+    (doc/generate-docs {:lib lib :version version
+                        :description (:description opts)
+                        :source-uri (str (get-in opts [:scm :url])
+                                         "/blob/{git-commit}/{filepath}#L{line}")})
     (println "\nCopying source...")
-    (b/copy-dir {:src-dirs ["resources" "src"] :target-dir class-dir})
+    (b/copy-dir {:src-dirs ["resources" "src" "target/doc-resources"] :target-dir class-dir})
     (println "\nBuilding JAR...")
     (b/jar opts))
   opts)

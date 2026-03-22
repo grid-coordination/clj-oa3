@@ -32,7 +32,8 @@
 
            :build {:deps {io.github.clojure/tools.build
                           {:git/tag "v0.10.10" :git/sha "deedd62"}
-                          slipset/deps-deploy {:mvn/version "0.2.2"}}
+                          slipset/deps-deploy {:mvn/version "0.2.2"}
+                          io.github.dcj/codox-md {:mvn/version "0.1.0"}}
                    :ns-default build}
 
            :test {:extra-paths ["test"]
