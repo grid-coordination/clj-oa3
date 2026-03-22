@@ -24,7 +24,10 @@
          :jar-file (format "target/%s-%s.jar" (name lib) version)
          :description "Clojure client library for the OpenADR 3 API with spec-driven HTTP and entity coercion"
          :url "https://grid-coordination.energy"
-         :licenses [{:name "MIT" :url "https://opensource.org/licenses/MIT"}]
+         :pom-data [[:licenses
+                     [:license
+                      [:name "MIT"]
+                      [:url "https://opensource.org/licenses/MIT"]]]]
          :scm {:tag (str "v" version)
                :url "https://github.com/grid-coordination/clj-oa3"}
          :basis (b/create-basis {})
