@@ -73,6 +73,9 @@ The specs are sourced from [grid-coordination/openadr3-specification](https://gi
 ;; Each client can target a different spec version
 (def ven-301 (api/create-ven-client "my-ven-token" url {:spec-version "3.0.1"}))
 (def bl-300  (api/create-bl-client "my-bl-token" url {:spec-version "3.0.0"}))
+
+;; Custom User-Agent (default: "clj-oa3/0.1.0 (mac=<hex>)" with hostname/unknown fallback)
+(def ven (api/create-ven-client "token" url {:user-agent "my-app/1.0 (contact@example.com)"}))
 ```
 
 ### Raw API (HTTP responses)
@@ -179,8 +182,8 @@ ValuesMap payloads are coerced via the `coerce-payload` multimethod, dispatching
 | `spec-versions` | Map of version string to classpath resource path |
 | `spec-path` | Resolve version string to spec file path (default `3.1.0`) |
 | `read-openapi-spec` | Bootstrap Martian client from explicit spec file path |
-| `create-ven-client` | Create authenticated VEN client (opts: `:spec-version`, `:http-client`) |
-| `create-bl-client` | Create authenticated BL client (opts: `:spec-version`, `:http-client`) |
+| `create-ven-client` | Create authenticated VEN client (opts: `:spec-version`, `:http-client`, `:user-agent`) |
+| `create-bl-client` | Create authenticated BL client (opts: `:spec-version`, `:http-client`, `:user-agent`) |
 
 ### Raw CRUD (returns `{:status :body}`)
 

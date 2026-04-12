@@ -1,5 +1,6 @@
 (ns openadr3.api-test
   (:require [clojure.test :refer [deftest is testing]]
+            [clojure.string :as str]
             [openadr3.api :as api]))
 
 ;; ---------------------------------------------------------------------------
@@ -147,6 +148,24 @@
       (is (> (count (api/all-routes ven-310))
              (count (api/all-routes ven-301))))
       (is (pos? (count (api/all-routes ven-300)))))))
+
+(deftest user-agent-interceptor-test
+  (testing "default user-agent is applied"
+    (let [client (api/create-ven-client "t" "http://x")
+          interceptors (:interceptors client)
+          ua-interceptor (some #(when (= ::api/add-user-agent-header (:name %)) %) interceptors)]
+      (is (some? ua-interceptor))
+      (let [ua (get-in ((:enter ua-interceptor) {:request {:headers {}}})
+                       [:request :headers "User-Agent"])]
+        (is (str/starts-with? ua (str "clj-oa3/" api/lib-version)))
+        (is (re-find #"\((?:mac=[0-9a-f]+|host=.+|unknown)\)" ua)))))
+  (testing "custom user-agent is applied"
+    (let [client (api/create-ven-client "t" "http://x" {:user-agent "my-app/2.0"})
+          interceptors (:interceptors client)
+          ua-interceptor (some #(when (= ::api/add-user-agent-header (:name %)) %) interceptors)]
+      (is (= "my-app/2.0"
+             (get-in ((:enter ua-interceptor) {:request {:headers {}}})
+                     [:request :headers "User-Agent"]))))))
 
 ;; ---------------------------------------------------------------------------
 ;; Route introspection

@@ -42,8 +42,51 @@
      resource-path)))
 
 ;; -----------------------------------------------------------------------------
+;; Version & User-Agent
+;; -----------------------------------------------------------------------------
+
+(def lib-version "0.1.0")
+
+(defn- get-mac-address
+  "Returns the MAC address of the first non-loopback interface as a hex string, or nil."
+  []
+  (try
+    (some->> (java.net.NetworkInterface/getNetworkInterfaces)
+             enumeration-seq
+             (remove #(.isLoopback %))
+             (some #(.getHardwareAddress %))
+             (map #(format "%02x" (bit-and % 0xff)))
+             (apply str))
+    (catch Exception _ nil)))
+
+(defn- get-hostname
+  "Returns the local hostname, or nil."
+  []
+  (try
+    (.getHostName (java.net.InetAddress/getLocalHost))
+    (catch Exception _ nil)))
+
+(defn- node-identifier
+  "Returns a node identifier string: MAC address, hostname, or \"unknown\"."
+  []
+  (or (when-let [mac (get-mac-address)]
+        (str "mac=" mac))
+      (when-let [host (get-hostname)]
+        (str "host=" host))
+      "unknown"))
+
+(def default-user-agent (str "clj-oa3/" lib-version " (" (node-identifier) ")"))
+
+;; -----------------------------------------------------------------------------
 ;; Interceptors
 ;; -----------------------------------------------------------------------------
+
+(defn create-user-agent-header
+  "Martian interceptor that sets the User-Agent header on requests."
+  [user-agent]
+  {:name ::add-user-agent-header
+   :enter (fn [ctx]
+            (assoc-in ctx [:request :headers "User-Agent"] user-agent))})
 
 (defn create-authentication-header
   "Martian interceptor that adds a Bearer token to requests."
@@ -108,20 +151,23 @@
 (defn create-ven-client
   "Create an authenticated VEN (Virtual End Node) client.
   Uses the embedded spec (default version 3.1.0). Pass opts map to override
-  :spec-version or provide :http-client.
+  :spec-version, :http-client, or :user-agent.
 
   Examples:
     (create-ven-client token url)
     (create-ven-client token url {:spec-version \"3.0.1\"})
-    (create-ven-client token url {:http-client hc})"
+    (create-ven-client token url {:http-client hc})
+    (create-ven-client token url {:user-agent \"my-app/1.0\"})"
   ([auth-token url]
    (create-ven-client auth-token url {}))
   ([auth-token url opts]
    (let [specfile    (spec-path (:spec-version opts default-spec-version))
-         http-client (:http-client opts)]
+         http-client (:http-client opts)
+         user-agent  (:user-agent opts default-user-agent)]
      (with-meta
        (read-openapi-spec specfile
-                          [(create-authentication-header auth-token)
+                          [(create-user-agent-header user-agent)
+                           (create-authentication-header auth-token)
                            (turn-off-exception-throwing)]
                           url
                           http-client)
@@ -131,20 +177,23 @@
 (defn create-bl-client
   "Create an authenticated BL (Business Logic) client.
   Uses the embedded spec (default version 3.1.0). Pass opts map to override
-  :spec-version or provide :http-client.
+  :spec-version, :http-client, or :user-agent.
 
   Examples:
     (create-bl-client token url)
     (create-bl-client token url {:spec-version \"3.0.1\"})
-    (create-bl-client token url {:http-client hc})"
+    (create-bl-client token url {:http-client hc})
+    (create-bl-client token url {:user-agent \"my-app/1.0\"})"
   ([auth-token url]
    (create-bl-client auth-token url {}))
   ([auth-token url opts]
    (let [specfile    (spec-path (:spec-version opts default-spec-version))
-         http-client (:http-client opts)]
+         http-client (:http-client opts)
+         user-agent  (:user-agent opts default-user-agent)]
      (with-meta
        (read-openapi-spec specfile
-                          [(create-authentication-header auth-token)
+                          [(create-user-agent-header user-agent)
+                           (create-authentication-header auth-token)
                            (turn-off-exception-throwing)]
                           url
                           http-client)
