@@ -43,4 +43,4 @@
            :nrepl {:extra-paths ["dev"]
                    :extra-deps {nrepl/nrepl {:mvn/version "1.6.0"}}
                    :jvm-opts ["-Djdk.attach.allowAttachSelf"]
-                   :main-opts ["-m" "nrepl.cmdline" "--port" "7889"]}}}
+                   :main-opts ["-m" "nrepl.cmdline"]}}}

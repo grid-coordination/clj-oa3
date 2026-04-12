@@ -304,7 +304,7 @@ The `validate-raw-*` functions in `openadr3.entities` use the raw schemas for bo
 
 ```bash
 clojure -M:nrepl
-# nREPL running on port 7889
+# nREPL port written to .nrepl-port
 ```
 
 ### Run Tests
