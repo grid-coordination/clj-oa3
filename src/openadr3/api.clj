@@ -45,7 +45,7 @@
 ;; Version & User-Agent
 ;; -----------------------------------------------------------------------------
 
-(def lib-version "0.2.0")
+(def lib-version "0.2.1")
 
 (defn- get-mac-address
   "Returns the MAC address of the first non-loopback interface as a hex string, or nil."

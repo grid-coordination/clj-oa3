@@ -9,7 +9,7 @@ A Clojure client library for the [OpenADR 3](https://www.openadr.org/) API, prov
 Add to your `deps.edn`:
 
 ```clojure
-{:deps {energy.grid-coordination/clj-oa3 {:mvn/version "0.2.0"}}}
+{:deps {energy.grid-coordination/clj-oa3 {:mvn/version "0.2.1"}}}
 ```
 
 ## Features
