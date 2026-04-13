@@ -6,6 +6,7 @@
   (programs, events, vens, etc.) to get namespaced Clojure entities."
   (:require [martian.core :as martian]
             [martian.hato :as mhhttp]
+            [martian.interceptors :as mi]
             [hato.client :as hc]
             [clojure.set :as set]
             [openadr3.entities :as entities]
@@ -105,6 +106,29 @@
             (assoc-in ctx
                       [:request :throw-exceptions?] false))})
 
+(defn- safe-coerce-response
+  "Wraps Martian's coerce-response interceptor to handle non-JSON error bodies.
+  On 4xx/5xx responses, catches parse exceptions and returns the raw body string
+  instead of throwing JsonParseException."
+  []
+  (let [original (mi/coerce-response mhhttp/default-response-encoders
+                                     (mhhttp/get-response-coerce-opts false))]
+    (assoc original
+           :leave (fn [{:keys [response] :as ctx}]
+                    (if (and (:status response) (>= (:status response) 400))
+                      (try
+                        ((:leave original) ctx)
+                        (catch Exception _
+                          ctx))
+                      ((:leave original) ctx))))))
+
+(def safe-default-interceptors
+  "Martian hato default interceptors with safe response coercion for error responses."
+  (mi/inject mhhttp/default-interceptors
+             (safe-coerce-response)
+             :replace
+             ::mi/coerce-response))
+
 (defn build-shared-http-client
   "Build a shared Java HttpClient with connection timeout.
   Reuse across requests to avoid per-request client creation."
@@ -145,7 +169,7 @@
              {:use-defaults true
               :interceptors (concat
                              all-interceptors
-                             mhhttp/default-interceptors)})
+                             safe-default-interceptors)})
             :api-root url))))
 
 (defn create-ven-client

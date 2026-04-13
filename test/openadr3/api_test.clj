@@ -52,6 +52,35 @@
         ctx ((:enter interceptor) {:request {}})]
     (is (= :fake-http-client (get-in ctx [:request :http-client])))))
 
+(deftest safe-coerce-response-test
+  (let [safe-cr (->> api/safe-default-interceptors
+                     (filter #(= (:name %) :martian.interceptors/coerce-response))
+                     first)
+        leave-fn (:leave safe-cr)]
+
+    (testing "non-JSON body on 4xx/5xx returns raw body string"
+      (let [result (leave-fn {:response {:status 404
+                                         :headers {:content-type "application/json"}
+                                         :body "Not found"}
+                              :coerce-as {:type :default :value :string}})]
+        (is (= 404 (get-in result [:response :status])))
+        (is (= "Not found" (get-in result [:response :body])))))
+
+    (testing "valid JSON body on 4xx/5xx is still parsed"
+      (let [result (leave-fn {:response {:status 404
+                                         :headers {:content-type "application/json"}
+                                         :body "{\"error\":\"not found\"}"}
+                              :coerce-as {:type :default :value :string}})]
+        (is (= 404 (get-in result [:response :status])))
+        (is (= {:error "not found"} (get-in result [:response :body])))))
+
+    (testing "non-JSON body on 2xx still throws"
+      (is (thrown? com.fasterxml.jackson.core.JsonParseException
+                   (leave-fn {:response {:status 200
+                                         :headers {:content-type "application/json"}
+                                         :body "not json"}
+                              :coerce-as {:type :default :value :string}}))))))
+
 ;; ---------------------------------------------------------------------------
 ;; Response helpers
 ;; ---------------------------------------------------------------------------
