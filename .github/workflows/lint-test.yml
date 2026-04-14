@@ -1,0 +1,27 @@
+name: Lint & Test
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeLaGuardo/setup-clojure@12.5
+        with:
+          cli: latest
+      - uses: DeLaGuardo/setup-clj-kondo@master
+        with:
+          version: '2026.01.19'
+      - name: Cache deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+          key: deps-${{ hashFiles('deps.edn') }}
+      - name: Initialize clj-kondo
+        run: |
+          clj-kondo --lint "$(clojure -Spath)" --dependencies --parallel --copy-configs
+      - name: Lint
+        run: clj-kondo --lint src test --fail-level warning
+      - name: Test
+        run: clojure -M:test
