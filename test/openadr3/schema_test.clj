@@ -5,8 +5,7 @@
             [malli.core :as m]
             [openadr3.entities :as entities]
             [openadr3.entities.schema :as schema]
-            [openadr3.entities.schema.raw :as raw])
-  (:import [java.time Duration Instant]))
+            [openadr3.entities.schema.raw :as raw]))
 
 ;; ---------------------------------------------------------------------------
 ;; Raw fixtures (same as entities_test)

@@ -12,12 +12,10 @@
   Schemas live in dedicated namespaces:
     openadr3.entities.schema       — coerced entity schemas (the public contract)
     openadr3.entities.schema.raw   — raw API schemas (boundary validation)"
-  (:require [tick.core :as t]
-            [tick.alpha.interval :as t.i]
+  (:require [tick.alpha.interval :as t.i]
             [malli.core :as m]
             [camel-snake-kebab.core :as csk]
             [camel-snake-kebab.extras :as cske]
-            [openadr3.entities.schema :as schema]
             [openadr3.entities.schema.raw :as raw])
   (:import [java.time Duration Instant]))
 
@@ -374,14 +372,6 @@
    :reportId   :reportID
    :clientId   :clientID
    :subscriptionId :subscriptionID})
-
-(defn- fix-id-keys
-  "Replace *Id keys with *ID keys to match the OpenADR API convention."
-  [m]
-  (reduce-kv (fn [acc k v]
-               (let [new-k (get id-suffix-fixups k k)]
-                 (assoc acc new-k v)))
-             {} m))
 
 (defn- snake->camel-keys
   "Recursively transform all keys from snake_case to camelCase keywords,
