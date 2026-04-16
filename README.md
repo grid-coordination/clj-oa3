@@ -114,14 +114,15 @@ The specs are sourced from [grid-coordination/openadr3-specification](https://gi
 
 ### Entity Coercion Details
 
-All timestamps become `java.time.Instant` (UTC — the OA3 spec mandates Zulu time). Durations become `java.time.Duration`. When an IntervalPeriod has both start and duration, a [tick](https://github.com/juxt/tick) interval is computed:
+All timestamps become `java.time.Instant` (UTC — the OA3 spec mandates Zulu time). Durations become `java.time.Duration`. When an IntervalPeriod has both start and duration, `:tick/beginning` and `:tick/end` are assoc'd directly on the entity map, making it immediately usable as a [tick](https://github.com/juxt/tick) interval:
 
 ```clojure
-;; IntervalPeriod with tick interval
+;; IntervalPeriod with tick interval keys
 (:openadr.event/interval-period event)
-;; => #:openadr.interval-period{:start    #inst "2023-06-15T09:30:00Z"
-;;                              :duration #object[Duration "PT1H"]
-;;                              :period   {:tick/beginning #inst "..." :tick/end #inst "..."}}
+;; => {:openadr.interval-period/start    #inst "2023-06-15T09:30:00Z"
+;;     :openadr.interval-period/duration #object[Duration "PT1H"]
+;;     :tick/beginning                   #inst "2023-06-15T09:30:00Z"
+;;     :tick/end                         #inst "2023-06-15T10:30:00Z"}
 
 ;; Convert to local time when you know the timezone
 (require '[openadr3.entities :as entities])

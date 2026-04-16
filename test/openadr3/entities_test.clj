@@ -113,11 +113,9 @@
     (is (instance? Instant (:openadr.interval-period/start result)))
     (is (instance? Duration (:openadr.interval-period/duration result)))
     (is (= (Duration/parse "PT2H") (:openadr.interval-period/duration result)))
-    (testing "computes tick interval when both start and duration present"
-      (let [period (:openadr.interval-period/period result)]
-        (is (some? period))
-        (is (instance? Instant (:tick/beginning period)))
-        (is (instance? Instant (:tick/end period)))))
+    (testing "assocs tick interval keys directly when both start and duration present"
+      (is (instance? Instant (:tick/beginning result)))
+      (is (instance? Instant (:tick/end result))))
     (testing "preserves raw metadata"
       (is (some? (:openadr/raw (meta result)))))))
 
@@ -125,17 +123,19 @@
   (is (nil? (entities/->interval-period nil))))
 
 (deftest interval-period-partial-test
-  (testing "start only — no tick interval"
+  (testing "start only — no tick interval keys"
     (let [result (entities/->interval-period {:start "2024-06-15T12:00:00Z"})]
       (is (some? (:openadr.interval-period/start result)))
       (is (nil? (:openadr.interval-period/duration result)))
-      (is (nil? (:openadr.interval-period/period result)))))
+      (is (nil? (:tick/beginning result)))
+      (is (nil? (:tick/end result)))))
 
-  (testing "duration only — no tick interval"
+  (testing "duration only — no tick interval keys"
     (let [result (entities/->interval-period {:duration "PT1H"})]
       (is (nil? (:openadr.interval-period/start result)))
       (is (some? (:openadr.interval-period/duration result)))
-      (is (nil? (:openadr.interval-period/period result))))))
+      (is (nil? (:tick/beginning result)))
+      (is (nil? (:tick/end result))))))
 
 (deftest interval-period-randomize-start-test
   (let [result (entities/->interval-period {:start "2024-06-15T12:00:00Z"

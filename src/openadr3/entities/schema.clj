@@ -10,7 +10,8 @@
    [:openadr.interval-period/start [:maybe inst?]]
    [:openadr.interval-period/duration [:maybe [:fn #(instance? Duration %)]]]
    [:openadr.interval-period/randomize-start {:optional true} [:maybe [:fn #(instance? Duration %)]]]
-   [:openadr.interval-period/period {:optional true} [:map [:tick/beginning inst?] [:tick/end inst?]]]])
+   [:tick/beginning {:optional true} inst?]
+   [:tick/end {:optional true} inst?]])
 
 (def Payload
   [:map

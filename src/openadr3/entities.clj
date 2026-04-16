@@ -12,8 +12,7 @@
   Schemas live in dedicated namespaces:
     openadr3.entities.schema       — coerced entity schemas (the public contract)
     openadr3.entities.schema.raw   — raw API schemas (boundary validation)"
-  (:require [tick.alpha.interval :as t.i]
-            [malli.core :as m]
+  (:require [malli.core :as m]
             [camel-snake-kebab.core :as csk]
             [camel-snake-kebab.extras :as cske]
             [openadr3.entities.schema.raw :as raw])
@@ -95,22 +94,24 @@
     :openadr.interval-period/start    — Instant (or nil)
     :openadr.interval-period/duration — Duration (or nil)
     :openadr.interval-period/randomize-start — Duration (or nil)
-    :openadr.interval-period/period   — tick interval [start, start+duration) (when both present)
+    :tick/beginning — Instant (when both start and duration present)
+    :tick/end       — Instant (when both start and duration present)
 
-  Attaches :openadr/raw metadata."
+  The entity is directly usable as a tick interval when both start and
+  duration are present.  Attaches :openadr/raw metadata."
   [raw]
   (when raw
     (let [start    (parse-instant-maybe (:start raw))
           duration (parse-duration-maybe (:duration raw))
-          period   (when (and start duration)
-                     (t.i/new-interval start (.plus ^Instant start ^Duration duration)))]
+          end      (when (and start duration)
+                     (.plus ^Instant start ^Duration duration))]
       (-> (cond-> {:openadr.interval-period/start    start
                    :openadr.interval-period/duration duration}
             (:randomizeStart raw)
             (assoc :openadr.interval-period/randomize-start
                    (parse-duration-maybe (:randomizeStart raw)))
-            period
-            (assoc :openadr.interval-period/period period))
+            end
+            (assoc :tick/beginning start :tick/end end))
           (with-meta {:openadr/raw raw})))))
 
 ;; ---------------------------------------------------------------------------
