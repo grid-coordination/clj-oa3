@@ -1,11 +1,12 @@
 (ns build
   (:refer-clojure :exclude [test])
-  (:require [clojure.tools.build.api :as b]
+  (:require [build-provenance.write :as bp]
+            [clojure.tools.build.api :as b]
             [codox.md.build :as doc]
             [deps-deploy.deps-deploy :as dd]))
 
 (def lib 'energy.grid-coordination/clj-oa3)
-(def version "0.2.3")
+(def version "0.2.4")
 (def class-dir "target/classes")
 
 (defn test "Run all the tests." [opts]
@@ -48,6 +49,8 @@
                                          "/blob/{git-commit}/{filepath}#L{line}")})
     (println "\nCopying source...")
     (b/copy-dir {:src-dirs ["resources" "src" "target/doc-resources"] :target-dir class-dir})
+    (println "\nWriting build provenance...")
+    (bp/write! {:lib lib :version version :class-dir class-dir})
     (println "\nBuilding JAR...")
     (b/jar opts))
   opts)

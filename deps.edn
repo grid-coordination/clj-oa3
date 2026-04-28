@@ -24,7 +24,8 @@
            :build {:deps {io.github.clojure/tools.build
                           {:git/tag "v0.10.10" :git/sha "deedd62"}
                           slipset/deps-deploy {:mvn/version "0.2.2"}
-                          com.dcj/codox-md {:mvn/version "0.1.0"}
+                          com.dcj/codox-md {:mvn/version "0.2.0"}
+                          com.dcj/build-provenance {:mvn/version "0.2.0"}
                           ;; Pin jackson to match cheshire 6.0.0; deps-deploy
                           ;; brings 2.12.4 which lacks streamReadConstraints
                           com.fasterxml.jackson.core/jackson-core {:mvn/version "2.18.3"}
