@@ -11,13 +11,13 @@ A Clojure client library for the [OpenADR 3](https://www.openadr.org/) API, prov
 Add to your `deps.edn`:
 
 ```clojure
-{:deps {energy.grid-coordination/clj-oa3 {:mvn/version "0.2.4"}}}
+{:deps {energy.grid-coordination/clj-oa3 {:mvn/version "0.3.0"}}}
 ```
 
 ## Features
 
 - **Spec-driven HTTP client** built on [Martian](https://github.com/oliyh/martian) — the OpenAPI spec is the single source of truth
-- **Two-layer data model** — raw API responses (camelCase JSON) and coerced Clojure entities (namespaced keywords, Instants, Durations, tick intervals)
+- **Two-layer data model** — raw API responses (camelCase JSON) and coerced Clojure entities (namespaced keywords, ZonedDateTimes, Durations, tick intervals)
 - **VEN and BL client types** with OAuth2 scope metadata
 - **Full CRUD** for all OpenADR 3 resources: programs, events, VENs, resources, reports, subscriptions
 - **MQTT topic discovery** for all notifier endpoints
@@ -35,7 +35,7 @@ Add to your `deps.edn`:
 │  → return {:status 200 :body {...camelCase...}}       │
 │                                                       │
 │  Coerced functions: programs, events, vens, ...       │
-│  → return [#:openadr{:id "..." :created #inst ...}]   │
+│  → return [#:openadr{:id "..." :created #zdt ...}]    │
 │       └── each entity carries :openadr/raw metadata   │
 ├───────────────────────────────────────────────────────┤
 │                openadr3.entities                      │
@@ -98,8 +98,8 @@ The specs are sourced from [grid-coordination/openadr3-specification](https://gi
 ```clojure
 (api/programs bl)
 ;; => [#:openadr{:id "abc123"
-;;              :created #inst "2023-06-15T09:30:00Z"
-;;              :modified #inst "2023-06-15T09:30:00Z"
+;;              :created  #time/zoned-date-time "2023-06-15T09:30:00Z"
+;;              :modified #time/zoned-date-time "2023-06-15T09:30:00Z"
 ;;              :object-type :openadr.object-type/program}
 ;;     #:openadr.program{:name "MyProgram"}]
 
@@ -116,21 +116,52 @@ The specs are sourced from [grid-coordination/openadr3-specification](https://gi
 
 ### Entity Coercion Details
 
-All timestamps become `java.time.Instant` (UTC — the OA3 spec mandates Zulu time). Durations become `java.time.Duration`. When an IntervalPeriod has both start and duration, `:tick/beginning` and `:tick/end` are assoc'd directly on the entity map, making it immediately usable as a [tick](https://github.com/juxt/tick) interval:
+All timestamps become `java.time.ZonedDateTime`, zoned to the offset present on the wire (see [Time and timezones](#time-and-timezones) below). Durations become `java.time.Duration`. When an IntervalPeriod has both start and duration, `:tick/beginning` and `:tick/end` are assoc'd directly on the entity map, making it immediately usable as a [tick](https://github.com/juxt/tick) interval:
 
 ```clojure
 ;; IntervalPeriod with tick interval keys
 (:openadr.event/interval-period event)
-;; => {:openadr.interval-period/start    #inst "2023-06-15T09:30:00Z"
+;; => {:openadr.interval-period/start    #time/zoned-date-time "2023-06-15T09:30:00Z"
 ;;     :openadr.interval-period/duration #object[Duration "PT1H"]
-;;     :tick/beginning                   #inst "2023-06-15T09:30:00Z"
-;;     :tick/end                         #inst "2023-06-15T10:30:00Z"}
+;;     :tick/beginning                   #time/zoned-date-time "2023-06-15T09:30:00Z"
+;;     :tick/end                         #time/zoned-date-time "2023-06-15T10:30:00Z"}
 
-;; Convert to local time when you know the timezone
+;; Re-zone to a named IANA zone (preserves the same instant; useful when
+;; subsequent arithmetic should respect DST):
 (require '[openadr3.entities :as entities])
 (entities/->zoned (:openadr/created program)
                   (java.time.ZoneId/of "America/Los_Angeles"))
+
+;; If you need an Instant, call .toInstant on the ZonedDateTime:
+(.toInstant (:openadr/created program))
 ```
+
+### Time and timezones
+
+OpenADR 3 specifies [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339) ISO 8601 datetimes on the wire — a profile of ISO 8601 that allows arbitrary numeric offsets, not just `Z`. Examples that are all valid OpenADR 3 wire values:
+
+| Wire | Meaning |
+|------|---------|
+| `2026-05-03T00:00:00Z`       | UTC, "Zulu" |
+| `2026-05-03T00:00:00+00:00`  | UTC, explicit offset |
+| `2026-05-03T00:00:00-07:00`  | Pacific Daylight Time |
+| `2026-05-03T00:00:00+09:00`  | Japan Standard Time |
+
+Every datetime field on a coerced entity (`:openadr/created`, `:openadr/modified`, `:openadr.interval-period/start`, `:tick/beginning`, `:tick/end`) is a `java.time.ZonedDateTime` zoned to the offset present on the wire. No IANA zone name is available from the wire, so the `ZonedDateTime` is anchored to the numeric offset itself — equivalent to the behaviour of [`python-oa3`](https://github.com/grid-coordination/python-oa3)'s Pendulum-based parser.
+
+```clojure
+(:openadr/created program)
+;; => #time/zoned-date-time "2026-05-03T00:00-07:00"
+
+;; Round-trips cleanly through ISO_OFFSET_DATE_TIME:
+(.format (:openadr/created program)
+         java.time.format.DateTimeFormatter/ISO_OFFSET_DATE_TIME)
+;; => "2026-05-03T00:00:00-07:00"
+```
+
+**Why ZonedDateTime, not Instant?** Earlier versions of this library returned `java.time.Instant` (UTC) and rejected non-`Z` wire forms because Java's `Instant/parse` is strict about the `Z` suffix. A spec-compliant VTN that publishes `2026-05-03T00:00:00-07:00` would crash the parser. Returning `ZonedDateTime` preserves the wire offset, accepts the full RFC 3339 grammar, and matches sister-implementation behaviour. Callers that want an `Instant` can call `.toInstant` on the value.
+
+**VTN-RI compatibility.** The OpenADR Alliance VTN reference implementation has historically emitted a non-standard space-separated form (`2026-05-03 00:00:00`, no `T`, no offset). This library normalises that form by inserting `T` and assuming UTC, so VTN-RI responses continue to parse without complaint.
 
 ### Payload Coercion (extensible)
 
@@ -261,12 +292,12 @@ openadr3.entities.schema       ;; coerced entity schemas (the public contract)
 openadr3.entities.schema.raw   ;; raw API schemas (boundary validation)
 ```
 
-**`openadr3.entities.schema`** — Coerced schemas describing the Clojure-native shape: namespaced keywords, Instants, Durations, tick intervals.
+**`openadr3.entities.schema`** — Coerced schemas describing the Clojure-native shape: namespaced keywords, ZonedDateTimes, Durations, tick intervals.
 
 ```clojure
 (require '[openadr3.entities.schema :as schema])
 
-schema/Program       ;; [:map [:openadr/id :string] [:openadr/created inst?] ...]
+schema/Program       ;; [:map [:openadr/id :string] [:openadr/created <ZonedDateTime>] ...]
 schema/Event         ;; [:map [:openadr.event/program-id :string] ...]
 schema/Ven
 schema/Resource
@@ -347,6 +378,14 @@ Uses [Kaocha](https://github.com/lambdaisland/kaocha). Test suites: `:api`, `:en
 |------|-------------|
 | [clj-oa3-client](https://github.com/grid-coordination/clj-oa3-client) | Component lifecycle wrapper for constructing and managing OA3 clients |
 | [clj-oa3-test](https://github.com/grid-coordination/clj-oa3-test) | OpenADR 3 integration tests |
+
+## Contributing
+
+Issues, Discussions, and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow (and the dev commands: tests, lint, nREPL). In short:
+
+- **Questions, API/design discussion, spec-interpretation gaps** → [Discussions](https://github.com/grid-coordination/clj-oa3/discussions)
+- **Confirmed bugs, coercion/schema fixes, doc errors** → [Issues](https://github.com/grid-coordination/clj-oa3/issues)
+- **Patches** → pull requests; please open a Discussion or Issue first for non-trivial changes (new endpoint coverage, new spec versions, new schema fields, new coercion behavior)
 
 ## License
 

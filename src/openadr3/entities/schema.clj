@@ -2,16 +2,19 @@
   "Malli schemas for coerced OpenADR 3 entities.
 
   These describe the Clojure-native shape produced by `openadr3.entities` coercion:
-  namespaced keywords, Instants, Durations, and tick intervals."
-  (:import [java.time Duration]))
+  namespaced keywords, ZonedDateTimes, Durations, and tick intervals."
+  (:import [java.time Duration ZonedDateTime]))
+
+(def ^:private ZDT
+  [:fn #(instance? ZonedDateTime %)])
 
 (def IntervalPeriod
   [:map
-   [:openadr.interval-period/start [:maybe inst?]]
+   [:openadr.interval-period/start [:maybe ZDT]]
    [:openadr.interval-period/duration [:maybe [:fn #(instance? Duration %)]]]
    [:openadr.interval-period/randomize-start {:optional true} [:maybe [:fn #(instance? Duration %)]]]
-   [:tick/beginning {:optional true} inst?]
-   [:tick/end {:optional true} inst?]])
+   [:tick/beginning {:optional true} ZDT]
+   [:tick/end {:optional true} ZDT]])
 
 (def Payload
   [:map
@@ -27,8 +30,8 @@
 (def Program
   [:map
    [:openadr/id :string]
-   [:openadr/created inst?]
-   [:openadr/modified inst?]
+   [:openadr/created ZDT]
+   [:openadr/modified ZDT]
    [:openadr/object-type [:= :openadr.object-type/program]]
    [:openadr.program/name :string]
    [:openadr.program/interval-period {:optional true} IntervalPeriod]
@@ -40,8 +43,8 @@
 (def Event
   [:map
    [:openadr/id :string]
-   [:openadr/created inst?]
-   [:openadr/modified inst?]
+   [:openadr/created ZDT]
+   [:openadr/modified ZDT]
    [:openadr/object-type [:= :openadr.object-type/event]]
    [:openadr.event/program-id :string]
    [:openadr.event/name {:optional true} :string]
@@ -56,8 +59,8 @@
 (def Ven
   [:map
    [:openadr/id :string]
-   [:openadr/created inst?]
-   [:openadr/modified inst?]
+   [:openadr/created ZDT]
+   [:openadr/modified ZDT]
    [:openadr/object-type :keyword]
    [:openadr.ven/name :string]
    [:openadr.ven/client-id {:optional true} :string]
@@ -67,8 +70,8 @@
 (def Resource
   [:map
    [:openadr/id :string]
-   [:openadr/created inst?]
-   [:openadr/modified inst?]
+   [:openadr/created ZDT]
+   [:openadr/modified ZDT]
    [:openadr/object-type :keyword]
    [:openadr.resource/name :string]
    [:openadr.resource/ven-id :string]
@@ -85,8 +88,8 @@
 (def Report
   [:map
    [:openadr/id :string]
-   [:openadr/created inst?]
-   [:openadr/modified inst?]
+   [:openadr/created ZDT]
+   [:openadr/modified ZDT]
    [:openadr/object-type [:= :openadr.object-type/report]]
    [:openadr.report/event-id :string]
    [:openadr.report/client-name :string]
@@ -105,8 +108,8 @@
 (def Subscription
   [:map
    [:openadr/id :string]
-   [:openadr/created inst?]
-   [:openadr/modified inst?]
+   [:openadr/created ZDT]
+   [:openadr/modified ZDT]
    [:openadr/object-type [:= :openadr.object-type/subscription]]
    [:openadr.subscription/client-name :string]
    [:openadr.subscription/client-id :string]

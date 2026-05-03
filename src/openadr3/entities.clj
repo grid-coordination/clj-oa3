@@ -2,7 +2,7 @@
   "Two-layer data model for OpenADR 3 entities.
 
   Raw layer: camelCase keys, string values — direct from the API JSON.
-  Coerced layer: namespaced keywords, Instants, Durations, tick intervals.
+  Coerced layer: namespaced keywords, ZonedDateTimes, Durations, tick intervals.
 
   Every coerced entity preserves the original raw data as :openadr/raw metadata.
 
@@ -16,32 +16,38 @@
             [camel-snake-kebab.core :as csk]
             [camel-snake-kebab.extras :as cske]
             [openadr3.entities.schema.raw :as raw])
-  (:import [java.time Duration Instant]))
+  (:import [java.time Duration OffsetDateTime ZoneId ZonedDateTime]))
 
 ;; ---------------------------------------------------------------------------
 ;; Parsing helpers
 ;; ---------------------------------------------------------------------------
 
-(defn- parse-instant
-  "Parse a datetime string to a UTC Instant.
-  Handles RFC 3339 (2026-03-08T19:22:06Z) and the VTN-RI's non-standard
-  format (2026-03-08 19:22:06) by normalizing to RFC 3339."
-  ^Instant [^String s]
+(defn- parse-zoned-datetime
+  "Parse an RFC 3339 datetime string to a ZonedDateTime.
+
+  Accepts arbitrary offsets per RFC 3339: `Z`, `+00:00`, `-07:00`, etc.
+  The returned ZonedDateTime is zoned to the wire offset (no IANA zone
+  name is available from the wire), matching python-oa3's Pendulum
+  behaviour.
+
+  Also handles the VTN-RI's non-standard space-separated format
+  (`2026-03-08 19:22:06`, no offset) by inserting `T` and assuming UTC."
+  ^ZonedDateTime [^String s]
   (let [normalized (if (.contains s "T")
                      s
                      (str (.replace s " " "T") "Z"))]
-    (Instant/parse normalized)))
+    (.toZonedDateTime (OffsetDateTime/parse normalized))))
 
 (defn- parse-duration
   "Parse an ISO 8601 duration string to a java.time.Duration."
   ^Duration [^String s]
   (Duration/parse s))
 
-(defn- parse-instant-maybe
-  "Parse an RFC 3339 datetime string to Instant, or nil if nil/blank."
+(defn- parse-zoned-datetime-maybe
+  "Parse an RFC 3339 datetime string to ZonedDateTime, or nil if nil/blank."
   [s]
   (when (and s (not (.isBlank ^String s)))
-    (parse-instant s)))
+    (parse-zoned-datetime s)))
 
 (defn- parse-duration-maybe
   "Parse an ISO 8601 duration string to Duration, or nil if nil/blank."
@@ -91,20 +97,20 @@
   "Coerce a raw intervalPeriod map.
 
   Returns a map with:
-    :openadr.interval-period/start    — Instant (or nil)
+    :openadr.interval-period/start    — ZonedDateTime (or nil)
     :openadr.interval-period/duration — Duration (or nil)
     :openadr.interval-period/randomize-start — Duration (or nil)
-    :tick/beginning — Instant (when both start and duration present)
-    :tick/end       — Instant (when both start and duration present)
+    :tick/beginning — ZonedDateTime (when both start and duration present)
+    :tick/end       — ZonedDateTime (when both start and duration present)
 
   The entity is directly usable as a tick interval when both start and
   duration are present.  Attaches :openadr/raw metadata."
   [raw]
   (when raw
-    (let [start    (parse-instant-maybe (:start raw))
+    (let [start    (parse-zoned-datetime-maybe (:start raw))
           duration (parse-duration-maybe (:duration raw))
           end      (when (and start duration)
-                     (.plus ^Instant start ^Duration duration))]
+                     (.plus ^ZonedDateTime start ^Duration duration))]
       (-> (cond-> {:openadr.interval-period/start    start
                    :openadr.interval-period/duration duration}
             (:randomizeStart raw)
@@ -142,8 +148,8 @@
   "Extract and coerce the common object metadata fields."
   [raw]
   {:openadr/id                    (:id raw)
-   :openadr/created               (parse-instant-maybe (:createdDateTime raw))
-   :openadr/modified              (parse-instant-maybe (:modificationDateTime raw))
+   :openadr/created               (parse-zoned-datetime-maybe (:createdDateTime raw))
+   :openadr/modified              (parse-zoned-datetime-maybe (:modificationDateTime raw))
    :openadr/object-type           (keyword "openadr.object-type"
                                            (.toLowerCase ^String (:objectType raw)))})
 
@@ -431,12 +437,12 @@
 ;; ---------------------------------------------------------------------------
 
 (defn ->zoned
-  "Convert an Instant to a ZonedDateTime in the given zone.
-
-  Use when you know the timezone context (e.g. your VTN's market zone).
-  The library stores Instants (UTC) by default to stay timezone-neutral.
+  "Re-zone a coerced ZonedDateTime to the given IANA zone, preserving the
+  same instant.  Useful when a value parsed from the wire (zoned to its
+  numeric offset) needs to be presented in a named zone (e.g. your VTN's
+  market zone) so subsequent arithmetic respects DST.
 
   Example:
     (->zoned (:openadr/created program) (java.time.ZoneId/of \"America/Los_Angeles\"))"
-  [^Instant instant ^java.time.ZoneId zone-id]
-  (.atZone instant zone-id))
+  [^ZonedDateTime zdt ^ZoneId zone-id]
+  (.withZoneSameInstant zdt zone-id))

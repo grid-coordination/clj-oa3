@@ -26,14 +26,14 @@
   (api/get-vens bl)
 
   ;; -------------------------------------------------------------------------
-  ;; Coerced entities (namespaced keywords, Instants, tick intervals)
+  ;; Coerced entities (namespaced keywords, ZonedDateTimes, tick intervals)
   ;; -------------------------------------------------------------------------
 
   ;; Programs
   (api/programs bl)
   ;; => [#:openadr{:id "abc123"
-  ;;              :created #inst "2023-06-15T09:30:00Z"
-  ;;              :modified #inst "2023-06-15T09:30:00Z"
+  ;;              :created  #time/zoned-date-time "2023-06-15T09:30:00Z"
+  ;;              :modified #time/zoned-date-time "2023-06-15T09:30:00Z"
   ;;              :object-type :openadr.object-type/program}
   ;;     #:openadr.program{:name "MyProgram"}]
 
@@ -49,7 +49,7 @@
   ;; Access raw data from any coerced entity
   (-> (first (api/programs bl)) meta :openadr/raw)
 
-  ;; Convert timestamps to local time
+  ;; Re-zone a timestamp to a named IANA zone (preserves the same instant)
   (entities/->zoned (:openadr/created (first (api/programs bl)))
                     (java.time.ZoneId/of "America/Los_Angeles"))
 

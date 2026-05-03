@@ -1,7 +1,7 @@
 (ns openadr3.entities-test
   (:require [clojure.test :refer [deftest is testing]]
             [openadr3.entities :as entities])
-  (:import [java.time Duration Instant ZonedDateTime]))
+  (:import [java.time Duration OffsetDateTime ZoneId ZonedDateTime]))
 
 ;; ---------------------------------------------------------------------------
 ;; Test fixtures — raw API response maps
@@ -110,12 +110,12 @@
 (deftest interval-period-test
   (let [result (entities/->interval-period {:start "2024-06-15T12:00:00Z"
                                             :duration "PT2H"})]
-    (is (instance? Instant (:openadr.interval-period/start result)))
+    (is (instance? ZonedDateTime (:openadr.interval-period/start result)))
     (is (instance? Duration (:openadr.interval-period/duration result)))
     (is (= (Duration/parse "PT2H") (:openadr.interval-period/duration result)))
     (testing "assocs tick interval keys directly when both start and duration present"
-      (is (instance? Instant (:tick/beginning result)))
-      (is (instance? Instant (:tick/end result))))
+      (is (instance? ZonedDateTime (:tick/beginning result)))
+      (is (instance? ZonedDateTime (:tick/end result))))
     (testing "preserves raw metadata"
       (is (some? (:openadr/raw (meta result)))))))
 
@@ -165,8 +165,8 @@
 (deftest program-coercion-test
   (let [p (entities/->program raw-program)]
     (is (= "prog-001" (:openadr/id p)))
-    (is (instance? Instant (:openadr/created p)))
-    (is (instance? Instant (:openadr/modified p)))
+    (is (instance? ZonedDateTime (:openadr/created p)))
+    (is (instance? ZonedDateTime (:openadr/modified p)))
     (is (= :openadr.object-type/program (:openadr/object-type p)))
     (is (= "Summer DR" (:openadr.program/name p)))
     (is (= ["https://example.com/desc"] (:openadr.program/descriptions p)))
@@ -356,19 +356,39 @@
                                  :modificationDateTime "2024-06-15 10:00:00"
                                  :objectType "PROGRAM"
                                  :programName "VTN-RI Format"})]
-      (is (instance? Instant (:openadr/created p)))
-      (is (= (Instant/parse "2024-06-15T09:30:00Z") (:openadr/created p))))))
+      (is (instance? ZonedDateTime (:openadr/created p)))
+      (is (= (.toInstant (OffsetDateTime/parse "2024-06-15T09:30:00Z"))
+             (.toInstant ^ZonedDateTime (:openadr/created p)))))))
+
+(deftest rfc-3339-offset-test
+  (testing "accepts arbitrary RFC 3339 offsets, preserving the wire offset"
+    (let [p (entities/->program {:id "p"
+                                 :createdDateTime "2026-05-03T00:00:00-07:00"
+                                 :modificationDateTime "2026-05-03T00:00:00+00:00"
+                                 :objectType "PROGRAM"
+                                 :programName "Offset"})
+          ^ZonedDateTime created  (:openadr/created p)
+          ^ZonedDateTime modified (:openadr/modified p)]
+      (is (instance? ZonedDateTime created))
+      (is (= (.getOffset (OffsetDateTime/parse "2026-05-03T00:00:00-07:00"))
+             (.getOffset created)))
+      (is (= (.toInstant (OffsetDateTime/parse "2026-05-03T07:00:00Z"))
+             (.toInstant created)))
+      (is (= (.toInstant (OffsetDateTime/parse "2026-05-03T00:00:00Z"))
+             (.toInstant modified))))))
 
 ;; ---------------------------------------------------------------------------
 ;; Timezone conversion
 ;; ---------------------------------------------------------------------------
 
 (deftest zoned-test
-  (let [instant (Instant/parse "2024-06-15T12:00:00Z")
-        zone (java.time.ZoneId/of "America/Los_Angeles")
-        zdt (entities/->zoned instant zone)]
-    (is (instance? ZonedDateTime zdt))
-    (is (= 5 (.getHour zdt)))))
+  (let [zdt (.atZone (.toInstant (OffsetDateTime/parse "2024-06-15T12:00:00Z"))
+                     (ZoneId/of "UTC"))
+        zone (ZoneId/of "America/Los_Angeles")
+        rezoned (entities/->zoned zdt zone)]
+    (is (instance? ZonedDateTime rezoned))
+    (is (= 5 (.getHour rezoned)))
+    (is (= zone (.getZone rezoned)))))
 
 ;; ---------------------------------------------------------------------------
 ;; Raw validation
