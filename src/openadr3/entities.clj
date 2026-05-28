@@ -215,6 +215,79 @@
                {:openadr.event/intervals (mapv ->interval intervals)}))
       (with-meta {:openadr/raw raw})))
 
+(defn- build-resolved-interval-period
+  "Construct an interval-period map from already-coerced start/duration.
+
+  Carries forward :openadr.interval-period/randomize-start from original-ip
+  if present, and propagates its metadata (so :openadr/raw, etc. survive).
+  Returns nil when both start and duration are nil."
+  [^ZonedDateTime start ^Duration duration original-ip]
+  (when (or start duration)
+    (let [end (when (and start duration) (.plus start duration))]
+      (-> (cond-> {:openadr.interval-period/start    start
+                   :openadr.interval-period/duration duration}
+            (:openadr.interval-period/randomize-start original-ip)
+            (assoc :openadr.interval-period/randomize-start
+                   (:openadr.interval-period/randomize-start original-ip))
+            end
+            (assoc :tick/beginning start :tick/end end))
+          (with-meta (meta original-ip))))))
+
+(defn ->resolved-intervals
+  "Return the event's intervals with :openadr.interval/interval-period
+  resolved per OpenADR 3.1.0 inheritance rules.
+
+  Spec semantics:
+    - event.intervalPeriod sets default start and duration for intervals
+    - interval.intervalPeriod, if present, may override (fully or partially)
+
+  For each interval, this fn fills in missing pieces from the event-level
+  :openadr.event/interval-period:
+    - :openadr.interval-period/duration inherits the event's duration
+    - :openadr.interval-period/start for interval i is computed as
+      event-start + sum of prior resolved interval durations (sequential,
+      consecutive starts anchored at the event's start time)
+    - :tick/beginning and :tick/end keys are recomputed when both resolved
+      start and duration are present
+
+  When the interval already has both start and duration, it is returned
+  unchanged. When neither per-interval nor event-level intervalPeriod has
+  the needed field(s), the synthesized interval-period simply omits them
+  — and when both are absent entirely, the interval retains no
+  :interval-period at all (caller decides fallback).
+
+  Returns a new vector of intervals; the input event is not mutated."
+  [event]
+  (let [event-ip       (:openadr.event/interval-period event)
+        event-start    (:openadr.interval-period/start event-ip)
+        event-duration (:openadr.interval-period/duration event-ip)
+        intervals      (:openadr.event/intervals event)]
+    (loop [out      []
+           offset   Duration/ZERO
+           [iv & more :as remaining] intervals]
+      (if (empty? remaining)
+        out
+        (let [own-ip       (:openadr.interval/interval-period iv)
+              own-start    (:openadr.interval-period/start own-ip)
+              own-duration (:openadr.interval-period/duration own-ip)
+              resolved-start    (or own-start
+                                    (when event-start
+                                      (.plus ^ZonedDateTime event-start ^Duration offset)))
+              resolved-duration (or own-duration event-duration)
+              needs-synth?      (and (or (not own-start) (not own-duration))
+                                     (or resolved-start resolved-duration))
+              resolved-ip       (if needs-synth?
+                                  (build-resolved-interval-period
+                                   resolved-start resolved-duration own-ip)
+                                  own-ip)
+              next-iv     (if resolved-ip
+                            (assoc iv :openadr.interval/interval-period resolved-ip)
+                            iv)
+              next-offset (if resolved-duration
+                            (.plus offset ^Duration resolved-duration)
+                            offset)]
+          (recur (conj out next-iv) next-offset more))))))
+
 ;; ---------------------------------------------------------------------------
 ;; Coercion: VEN
 ;; ---------------------------------------------------------------------------

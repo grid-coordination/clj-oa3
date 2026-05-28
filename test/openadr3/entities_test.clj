@@ -159,6 +159,128 @@
     (is (some? (:openadr/raw (meta result))))))
 
 ;; ---------------------------------------------------------------------------
+;; ->resolved-intervals — spec-mandated intervalPeriod inheritance
+;; ---------------------------------------------------------------------------
+
+(defn- event-with
+  "Build a minimal coerced event from event-level interval-period args and
+  a seq of per-interval intervalPeriod maps (raw, or nil for absent)."
+  [{:keys [event-start event-duration interval-ips]}]
+  (let [evt-ip (when (or event-start event-duration)
+                 (entities/->interval-period
+                  (cond-> {}
+                    event-start    (assoc :start event-start)
+                    event-duration (assoc :duration event-duration))))]
+    (cond-> {:openadr.event/intervals
+             (vec (map-indexed
+                   (fn [i ip]
+                     (entities/->interval
+                      (cond-> {:id i :payloads []}
+                        ip (assoc :intervalPeriod ip))))
+                   interval-ips))}
+      evt-ip (assoc :openadr.event/interval-period evt-ip))))
+
+(deftest resolved-intervals-passthrough-test
+  (testing "all per-interval intervalPeriod present — unchanged passthrough"
+    (let [evt (event-with {:event-start "2024-06-15T12:00:00Z"
+                           :event-duration "PT1H"
+                           :interval-ips [{:start "2024-06-15T13:00:00Z" :duration "PT30M"}
+                                          {:start "2024-06-15T14:00:00Z" :duration "PT45M"}]})
+          result (entities/->resolved-intervals evt)]
+      (is (= (:openadr.event/intervals evt) result)))))
+
+(deftest resolved-intervals-full-inheritance-test
+  (testing "per-interval absent — inherits both start and duration"
+    (let [evt (event-with {:event-start "2024-06-15T12:00:00Z"
+                           :event-duration "PT1H"
+                           :interval-ips [nil nil]})
+          result (entities/->resolved-intervals evt)
+          [iv0 iv1] result]
+      (is (= (Duration/parse "PT1H")
+             (get-in iv0 [:openadr.interval/interval-period :openadr.interval-period/duration])))
+      (is (= (.toInstant (OffsetDateTime/parse "2024-06-15T12:00:00Z"))
+             (.toInstant ^ZonedDateTime
+              (get-in iv0 [:openadr.interval/interval-period :openadr.interval-period/start]))))
+      (is (= (Duration/parse "PT1H")
+             (get-in iv1 [:openadr.interval/interval-period :openadr.interval-period/duration])))
+      (is (= (.toInstant (OffsetDateTime/parse "2024-06-15T13:00:00Z"))
+             (.toInstant ^ZonedDateTime
+              (get-in iv1 [:openadr.interval/interval-period :openadr.interval-period/start]))))
+      (testing "tick/beginning + tick/end populated"
+        (is (some? (get-in iv0 [:openadr.interval/interval-period :tick/beginning])))
+        (is (some? (get-in iv0 [:openadr.interval/interval-period :tick/end])))))))
+
+(deftest resolved-intervals-duration-only-test
+  (testing "per-interval has only duration — inherits start"
+    (let [evt (event-with {:event-start "2024-06-15T12:00:00Z"
+                           :event-duration "PT1H"
+                           :interval-ips [{:duration "PT15M"}
+                                          {:duration "PT45M"}]})
+          [iv0 iv1] (entities/->resolved-intervals evt)]
+      (is (= (Duration/parse "PT15M")
+             (get-in iv0 [:openadr.interval/interval-period :openadr.interval-period/duration])))
+      (is (= (.toInstant (OffsetDateTime/parse "2024-06-15T12:00:00Z"))
+             (.toInstant ^ZonedDateTime
+              (get-in iv0 [:openadr.interval/interval-period :openadr.interval-period/start]))))
+      (testing "interval[1] inherited start = event-start + interval[0] resolved duration"
+        (is (= (.toInstant (OffsetDateTime/parse "2024-06-15T12:15:00Z"))
+               (.toInstant ^ZonedDateTime
+                (get-in iv1 [:openadr.interval/interval-period :openadr.interval-period/start])))))
+      (is (= (Duration/parse "PT45M")
+             (get-in iv1 [:openadr.interval/interval-period :openadr.interval-period/duration]))))))
+
+(deftest resolved-intervals-start-only-test
+  (testing "per-interval has only start — inherits duration"
+    (let [evt (event-with {:event-start "2024-06-15T12:00:00Z"
+                           :event-duration "PT1H"
+                           :interval-ips [{:start "2024-06-15T15:30:00Z"}]})
+          [iv0] (entities/->resolved-intervals evt)]
+      (is (= (.toInstant (OffsetDateTime/parse "2024-06-15T15:30:00Z"))
+             (.toInstant ^ZonedDateTime
+              (get-in iv0 [:openadr.interval/interval-period :openadr.interval-period/start]))))
+      (is (= (Duration/parse "PT1H")
+             (get-in iv0 [:openadr.interval/interval-period :openadr.interval-period/duration])))
+      (testing "tick keys recomputed against resolved start + duration"
+        (is (= (.toInstant (OffsetDateTime/parse "2024-06-15T16:30:00Z"))
+               (.toInstant ^ZonedDateTime
+                (get-in iv0 [:openadr.interval/interval-period :tick/end]))))))))
+
+(deftest resolved-intervals-no-event-ip-test
+  (testing "per-interval absent AND event-level absent — no synthesis"
+    (let [evt (event-with {:interval-ips [nil nil]})
+          result (entities/->resolved-intervals evt)]
+      (is (every? #(nil? (:openadr.interval/interval-period %)) result))
+      (is (= 2 (count result))))))
+
+(deftest resolved-intervals-sequential-test
+  (testing "N intervals all inheriting — sequential consecutive starts"
+    (let [evt (event-with {:event-start "2024-06-15T12:00:00Z"
+                           :event-duration "PT30M"
+                           :interval-ips [nil nil nil nil]})
+          result (entities/->resolved-intervals evt)
+          starts (map #(get-in % [:openadr.interval/interval-period :openadr.interval-period/start])
+                      result)]
+      (is (= 4 (count result)))
+      (is (= [(.toInstant (OffsetDateTime/parse "2024-06-15T12:00:00Z"))
+              (.toInstant (OffsetDateTime/parse "2024-06-15T12:30:00Z"))
+              (.toInstant (OffsetDateTime/parse "2024-06-15T13:00:00Z"))
+              (.toInstant (OffsetDateTime/parse "2024-06-15T13:30:00Z"))]
+             (map #(.toInstant ^ZonedDateTime %) starts))))))
+
+(deftest resolved-intervals-preserves-payloads-test
+  (testing "synthesized intervals retain their payloads and id"
+    (let [evt {:openadr.event/interval-period
+               (entities/->interval-period {:start "2024-06-15T12:00:00Z" :duration "PT1H"})
+               :openadr.event/intervals
+               [(entities/->interval {:id 7
+                                      :payloads [{:type "PRICE" :values [42.5]}]})]}
+          [iv0] (entities/->resolved-intervals evt)]
+      (is (= 7 (:openadr.interval/id iv0)))
+      (is (= 1 (count (:openadr.interval/payloads iv0))))
+      (is (= :openadr.payload-type/price
+             (-> iv0 :openadr.interval/payloads first :openadr.payload/type))))))
+
+;; ---------------------------------------------------------------------------
 ;; Entity coercion: Program
 ;; ---------------------------------------------------------------------------
 

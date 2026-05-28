@@ -136,6 +136,30 @@ All timestamps become `java.time.ZonedDateTime`, zoned to the offset present on 
 (.toInstant (:openadr/created program))
 ```
 
+### IntervalPeriod Inheritance
+
+OpenADR 3 specifies that `event.intervalPeriod` *"sets default start time and duration of intervals"*, and that per-interval `intervalPeriod` *"may set temporal aspects of interval or override event.intervalPeriod"*. Coercion preserves both layers verbatim (no inheritance applied), so callers retain full fidelity to the wire. To get a flat view with the spec's inheritance rules applied, use `->resolved-intervals`:
+
+```clojure
+;; Event with hourly defaults, two intervals that omit their own intervalPeriod
+(entities/->resolved-intervals event)
+;; => [{:openadr.interval/id 0
+;;      :openadr.interval/interval-period
+;;        {:openadr.interval-period/start    #time/zoned-date-time "2024-06-15T12:00Z"
+;;         :openadr.interval-period/duration #object[Duration "PT1H"]
+;;         :tick/beginning ...
+;;         :tick/end       ...}
+;;      :openadr.interval/payloads [...]}
+;;     {:openadr.interval/id 1
+;;      :openadr.interval/interval-period
+;;        {:openadr.interval-period/start    #time/zoned-date-time "2024-06-15T13:00Z"
+;;         :openadr.interval-period/duration #object[Duration "PT1H"]
+;;         ...}
+;;      ...}]
+```
+
+Resolution rules: per-interval values win, missing pieces inherit from `:openadr.event/interval-period`, and inherited starts are computed sequentially as `event-start + sum of prior resolved durations`. When neither layer supplies a field, it is left absent — callers decide the fallback.
+
 ### Time and timezones
 
 OpenADR 3 specifies [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339) ISO 8601 datetimes on the wire — a profile of ISO 8601 that allows arbitrary numeric offsets, not just `Z`. Examples that are all valid OpenADR 3 wire values:
@@ -278,6 +302,7 @@ Topic discovery for all notifier endpoints. Functions follow the pattern `get-mq
 |----------|-------------|
 | `->program`, `->event`, `->ven`, `->resource`, `->report`, `->subscription` | Coerce raw API map to namespaced entity |
 | `->interval`, `->interval-period` | Coerce nested structures |
+| `->resolved-intervals` | Apply OpenADR 3 IntervalPeriod inheritance to an event's intervals |
 | `coerce` | Generic multimethod (dispatches on `:objectType`) |
 | `coerce-payload` | Extensible multimethod (dispatches on payload `:type`) |
 | `->zoned` | Convert Instant to ZonedDateTime |
@@ -378,6 +403,10 @@ Uses [Kaocha](https://github.com/lambdaisland/kaocha). Test suites: `:api`, `:en
 |------|-------------|
 | [clj-oa3-client](https://github.com/grid-coordination/clj-oa3-client) | Component lifecycle wrapper for constructing and managing OA3 clients |
 | [clj-oa3-test](https://github.com/grid-coordination/clj-oa3-test) | OpenADR 3 integration tests |
+
+## Changelog
+
+Release history and behavioral changes are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## Contributing
 
