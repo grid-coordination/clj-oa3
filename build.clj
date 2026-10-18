@@ -1,12 +1,13 @@
 (ns build
   (:refer-clojure :exclude [test])
   (:require [build-provenance.write :as bp]
+            [clojure.string :as str]
             [clojure.tools.build.api :as b]
             [codox.md.build :as doc]
             [deps-deploy.deps-deploy :as dd]))
 
 (def lib 'energy.grid-coordination/clj-oa3)
-(def version "0.4.0")
+(def version (str/trim (slurp "resources/META-INF/energy.grid-coordination/clj-oa3/VERSION")))
 (def class-dir "target/classes")
 
 (defn test "Run all the tests." [opts]

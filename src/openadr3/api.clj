@@ -10,7 +10,8 @@
             [hato.client :as hc]
             [clojure.set :as set]
             [openadr3.entities :as entities]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [clojure.string :as str]))
 
 ;; -----------------------------------------------------------------------------
 ;; Spec version resolution
@@ -46,7 +47,11 @@
 ;; Version & User-Agent
 ;; -----------------------------------------------------------------------------
 
-(def lib-version "0.2.1")
+(def lib-version
+  "This library's version, read from the VERSION resource that build.clj also reads."
+  (some-> (io/resource "META-INF/energy.grid-coordination/clj-oa3/VERSION")
+          slurp
+          str/trim))
 
 (defn- get-mac-address
   "Returns the MAC address of the first non-loopback interface as a hex string, or nil."
@@ -129,6 +134,19 @@
              :replace
              ::mi/coerce-response))
 
+(defn extra-query-params
+  "Martian interceptor that sends query params the spec does not declare.
+  extensions maps a route-name keyword to the param keys to pass through,
+  e.g. {:search-all-events [:dateStart :dateEnd]}. For a request to that
+  route, those keys present in the request params are merged into the
+  query string. Martian otherwise drops undeclared query params."
+  [extensions]
+  {:name ::extra-query-params
+   :enter (fn [{:keys [handler params] :as ctx}]
+            (if-let [extra (not-empty (select-keys params (get extensions (:route-name handler))))]
+              (update-in ctx [:request :query-params] merge extra)
+              ctx))})
+
 (defn build-shared-http-client
   "Build a shared Java HttpClient with connection timeout.
   Reuse across requests to avoid per-request client creation."
@@ -154,7 +172,9 @@
   "Bootstrap a Martian client from an OpenAPI spec file.
   Returns a Martian instance with optional interceptors and API root URL.
   When http-client is provided, prepends an interceptor to inject it into
-  every request, avoiding per-request HttpClient creation."
+  every request, avoiding per-request HttpClient creation.
+  When query-param-extensions is non-empty, adds an extra-query-params
+  interceptor after Martian's query-params interceptor."
   ([filename]
    (read-openapi-spec filename [] default-vtn-url nil))
   ([filename interceptors]
@@ -162,26 +182,37 @@
   ([filename interceptors url]
    (read-openapi-spec filename interceptors url nil))
   ([filename interceptors url http-client]
+   (read-openapi-spec filename interceptors url http-client nil))
+  ([filename interceptors url http-client query-param-extensions]
    (let [all-interceptors (cond-> interceptors
-                            http-client (conj (inject-http-client http-client)))]
+                            http-client (conj (inject-http-client http-client)))
+         defaults         (cond-> safe-default-interceptors
+                            (seq query-param-extensions)
+                            (mi/inject (extra-query-params query-param-extensions)
+                                       :after
+                                       ::mi/query-params))]
      (assoc (mhhttp/bootstrap-openapi
              filename
              {:use-defaults true
               :interceptors (concat
                              all-interceptors
-                             safe-default-interceptors)})
+                             defaults)})
             :api-root url))))
 
 (defn create-ven-client
   "Create an authenticated VEN (Virtual End Node) client.
   Uses the embedded spec (default version 3.1.0). Pass opts map to override
-  :spec-version, :http-client, or :user-agent.
+  :spec-version, :http-client, :user-agent, or :query-param-extensions
+  (route-name -> param keys to send although the spec does not declare
+  them; see extra-query-params).
 
   Examples:
     (create-ven-client token url)
     (create-ven-client token url {:spec-version \"3.0.1\"})
     (create-ven-client token url {:http-client hc})
-    (create-ven-client token url {:user-agent \"my-app/1.0\"})"
+    (create-ven-client token url {:user-agent \"my-app/1.0\"})
+    (create-ven-client token url {:query-param-extensions
+                                  {:search-all-events [:dateStart :dateEnd]}})"
   ([auth-token url]
    (create-ven-client auth-token url {}))
   ([auth-token url opts]
@@ -194,20 +225,25 @@
                            (create-authentication-header auth-token)
                            (turn-off-exception-throwing)]
                           url
-                          http-client)
+                          http-client
+                          (:query-param-extensions opts))
        {:openadr/client-type :ven
         :openadr/scopes #{"read_all" "read_targets" "read_ven_objects" "write_reports" "write_subscriptions" "write_vens"}}))))
 
 (defn create-bl-client
   "Create an authenticated BL (Business Logic) client.
   Uses the embedded spec (default version 3.1.0). Pass opts map to override
-  :spec-version, :http-client, or :user-agent.
+  :spec-version, :http-client, :user-agent, or :query-param-extensions
+  (route-name -> param keys to send although the spec does not declare
+  them; see extra-query-params).
 
   Examples:
     (create-bl-client token url)
     (create-bl-client token url {:spec-version \"3.0.1\"})
     (create-bl-client token url {:http-client hc})
-    (create-bl-client token url {:user-agent \"my-app/1.0\"})"
+    (create-bl-client token url {:user-agent \"my-app/1.0\"})
+    (create-bl-client token url {:query-param-extensions
+                                 {:search-all-events [:dateStart :dateEnd]}})"
   ([auth-token url]
    (create-bl-client auth-token url {}))
   ([auth-token url opts]
@@ -220,7 +256,8 @@
                            (create-authentication-header auth-token)
                            (turn-off-exception-throwing)]
                           url
-                          http-client)
+                          http-client
+                          (:query-param-extensions opts))
        {:openadr/client-type :bl
         :openadr/scopes #{"read_all" "read_bl" "write_programs" "write_events" "write_subscriptions" "write_vens"}}))))
 

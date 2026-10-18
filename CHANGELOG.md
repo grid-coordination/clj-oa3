@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). While the library is in early development (0.x), breaking changes may appear between minor versions when needed to fix correctness issues or align with the OpenADR 3.1.0 specification.
 
+## [0.5.0] - 2026-10-18
+
+### Added
+
+- **`:query-param-extensions` option on `create-ven-client` and `create-bl-client`** (and a 5-arity `read-openapi-spec`). Maps a route name to param keys that are sent on the query string although the embedded spec does not declare them, e.g. `{:search-all-events [:dateStart :dateEnd] :search-all-programs [:programName]}`; those keys then pass through the existing query-params map (`search-events`, `search-programs`, ...). Martian otherwise drops undeclared query params. Implemented by the new `extra-query-params` interceptor, placed after Martian's query-params interceptor. Without the option, requests are unchanged.
+
+### Fixed
+
+- **`lib-version` (and so the default User-Agent) reported `0.2.1`.** It is now read from the `META-INF/energy.grid-coordination/clj-oa3/VERSION` resource, which `build.clj` also reads.
+
 ## [0.4.0] — 2026-05-28
 
 ### Added
@@ -57,5 +67,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 Initial published release. Two-layer raw/coerced data model with namespaced keywords, `java.time.Instant` and `java.time.Duration` types, Martian-based Hato HTTP client with bearer auth, payload-type dispatch for PRICE / USAGE → `BigDecimal`, OpenAPI spec validation, MQTT notification coercion for both spec-compliant camelCase and VTN-RI snake_case shapes, Malli schemas for both raw and coerced layers.
 
+[0.5.0]: https://github.com/grid-coordination/clj-oa3/releases/tag/v0.5.0
 [0.4.0]: https://github.com/grid-coordination/clj-oa3/releases/tag/v0.4.0
 [0.3.0]: https://github.com/grid-coordination/clj-oa3/releases/tag/v0.3.0

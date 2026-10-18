@@ -11,7 +11,7 @@ A Clojure client library for the [OpenADR 3](https://www.openadr.org/) API, prov
 Add to your `deps.edn`:
 
 ```clojure
-{:deps {energy.grid-coordination/clj-oa3 {:mvn/version "0.3.0"}}}
+{:deps {energy.grid-coordination/clj-oa3 {:mvn/version "0.5.0"}}}
 ```
 
 ## Features
@@ -76,8 +76,13 @@ The specs are sourced from [grid-coordination/openadr3-specification](https://gi
 (def ven-301 (api/create-ven-client "my-ven-token" url {:spec-version "3.0.1"}))
 (def bl-300  (api/create-bl-client "my-bl-token" url {:spec-version "3.0.0"}))
 
-;; Custom User-Agent (default: "clj-oa3/0.1.0 (mac=<hex>)" with hostname/unknown fallback)
+;; Custom User-Agent (default: "clj-oa3/<version> (mac=<hex>)" with hostname/unknown fallback)
 (def ven (api/create-ven-client "token" url {:user-agent "my-app/1.0 (contact@example.com)"}))
+
+;; Send query params the spec does not declare (route-name -> param keys)
+(def bl-ext (api/create-bl-client "token" url {:query-param-extensions
+                                               {:search-all-events [:dateStart :dateEnd]}}))
+(api/search-events bl-ext {:programID "p" :dateStart "2026-01-01T00:00:00Z"})
 ```
 
 ### Raw API (HTTP responses)
@@ -240,8 +245,8 @@ ValuesMap payloads are coerced via the `coerce-payload` multimethod, dispatching
 | `spec-versions` | Map of version string to classpath resource path |
 | `spec-path` | Resolve version string to spec file path (default `3.1.0`) |
 | `read-openapi-spec` | Bootstrap Martian client from explicit spec file path |
-| `create-ven-client` | Create authenticated VEN client (opts: `:spec-version`, `:http-client`, `:user-agent`) |
-| `create-bl-client` | Create authenticated BL client (opts: `:spec-version`, `:http-client`, `:user-agent`) |
+| `create-ven-client` | Create authenticated VEN client (opts: `:spec-version`, `:http-client`, `:user-agent`, `:query-param-extensions`) |
+| `create-bl-client` | Create authenticated BL client (opts: `:spec-version`, `:http-client`, `:user-agent`, `:query-param-extensions`) |
 
 ### Raw CRUD (returns `{:status :body}`)
 

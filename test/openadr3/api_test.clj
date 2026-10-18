@@ -1,6 +1,7 @@
 (ns openadr3.api-test
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.string :as str]
+            [martian.core :as martian]
             [openadr3.api :as api]))
 
 ;; ---------------------------------------------------------------------------
@@ -218,3 +219,38 @@
 
     (testing "unauthenticated routes exist"
       (is (seq (api/get-unauthenticated-routes client))))))
+
+;; ---------------------------------------------------------------------------
+;; Extra query params
+;; ---------------------------------------------------------------------------
+
+(deftest extra-query-params-test
+  (let [exts {:search-all-events   [:dateStart :dateEnd]
+              :search-all-programs [:programName]}
+        bl   (api/create-bl-client "t" "http://x" {:query-param-extensions exts})
+        ven  (api/create-ven-client "t" "http://x" {:query-param-extensions exts})]
+    (testing "declared extension params reach the request alongside spec params"
+      (is (= {:programID "p"
+              :dateStart "2026-01-01T00:00:00Z" :dateEnd "2026-02-01T00:00:00Z"}
+             (:query-params
+              (martian/request-for bl :search-all-events
+                                   {:programID "p"
+                                    :dateStart "2026-01-01T00:00:00Z"
+                                    :dateEnd "2026-02-01T00:00:00Z"}))))
+      (is (= "Prog A"
+             (get-in (martian/request-for ven :search-all-programs {:programName "Prog A"})
+                     [:query-params :programName]))))
+    (testing "undeclared keys and other routes are unaffected"
+      (is (not (contains? (:query-params (martian/request-for bl :search-all-events {:bogus 1}))
+                          :bogus)))
+      (is (not (contains? (:query-params (martian/request-for bl :search-vens {:dateStart "x"}))
+                          :dateStart))))
+    (testing "without the option, undeclared params are still dropped"
+      (is (not (contains? (:query-params
+                           (martian/request-for (api/create-bl-client "t" "http://x")
+                                                :search-all-events {:dateStart "x"}))
+                          :dateStart))))))
+
+(deftest lib-version-test
+  (is (= (str/trim (slurp "resources/META-INF/energy.grid-coordination/clj-oa3/VERSION"))
+         api/lib-version)))
